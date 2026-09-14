@@ -5,6 +5,7 @@ from app.api.evidence import router as evidence_router
 from app.api.campaigns import router as campaigns_router
 from app.api.entities import router as entities_router
 from app.api.verdicts import router as verdicts_router
+from app.api.reports import router as reports_router
 
 
 app = FastAPI(
@@ -19,6 +20,7 @@ app.include_router(evidence_router)
 app.include_router(campaigns_router)
 app.include_router(entities_router)
 app.include_router(verdicts_router)
+app.include_router(reports_router)
 
 
 @app.get("/")
