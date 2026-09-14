@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.campaign import Campaign
 from app.schemas.campaign import CampaignResponse
+from app.services.campaign_detection import detect_campaigns
 
 
 router = APIRouter(
@@ -33,6 +34,21 @@ def create_campaign(
     db.refresh(campaign)
 
     return campaign
+
+
+@router.post(
+    "/detect",
+    response_model=list[CampaignResponse]
+)
+def detect_campaigns_api(
+    db: Session = Depends(get_db)
+):
+    """
+    Detect connected recruitment scam campaigns
+    from the investigation graph.
+    """
+
+    return detect_campaigns(db)
 
 
 @router.get(
