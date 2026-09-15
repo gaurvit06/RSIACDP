@@ -12,6 +12,7 @@ class EvidenceCreate(BaseModel):
     source_url: str | None = None
     result: str | None = None
     reliability: str
+    authoritative: bool = False
 
 
 class EvidenceResponse(BaseModel):
@@ -24,6 +25,7 @@ class EvidenceResponse(BaseModel):
     retrieved_at: datetime
     result: str | None
     reliability: str
+    authoritative: bool
 
     class Config:
         from_attributes = True

@@ -33,19 +33,8 @@ from app.services.privacy import (
 
 def build_investigation_report(
     db: Session,
-    case_id: str,
+    case_id: str
 ) -> dict:
-    """
-    Build a privacy-aware investigation report for one case.
-
-    The report combines:
-    - Case information
-    - Masked extracted entities
-    - Evidence and provenance
-    - Connected cases
-    - Campaign information
-    - Deterministic verdict
-    """
 
     case = (
         db.query(Case)
@@ -71,14 +60,12 @@ def build_investigation_report(
     )
 
     for phone in phone_results:
-        entities.append(
-            {
-                "entity_type": "phone",
-                "value": mask_phone(
-                    phone.normalized_number
-                ),
-            }
-        )
+        entities.append({
+            "entity_type": "phone",
+            "value": mask_phone(
+                phone.normalized_number
+            ),
+        })
 
     email_results = (
         db.query(Email)
@@ -93,14 +80,12 @@ def build_investigation_report(
     )
 
     for email in email_results:
-        entities.append(
-            {
-                "entity_type": "email",
-                "value": mask_email(
-                    email.normalized_address
-                ),
-            }
-        )
+        entities.append({
+            "entity_type": "email",
+            "value": mask_email(
+                email.normalized_address
+            ),
+        })
 
     domain_results = (
         db.query(Domain)
@@ -115,12 +100,10 @@ def build_investigation_report(
     )
 
     for domain in domain_results:
-        entities.append(
-            {
-                "entity_type": "domain",
-                "value": domain.normalized_domain,
-            }
-        )
+        entities.append({
+            "entity_type": "domain",
+            "value": domain.normalized_domain,
+        })
 
     upi_results = (
         db.query(UPI)
@@ -135,14 +118,12 @@ def build_investigation_report(
     )
 
     for upi in upi_results:
-        entities.append(
-            {
-                "entity_type": "upi",
-                "value": mask_upi(
-                    upi.normalized_upi
-                ),
-            }
-        )
+        entities.append({
+            "entity_type": "upi",
+            "value": mask_upi(
+                upi.normalized_upi
+            ),
+        })
 
     evidence = (
         db.query(Evidence)
@@ -159,15 +140,20 @@ def build_investigation_report(
 
     connected_case_ids = []
 
-    case_groups = find_connected_case_groups(graph)
+    case_groups = find_connected_case_groups(
+        graph
+    )
 
     for group in case_groups:
+
         if str(case_id) in group:
+
             connected_case_ids = [
-                case_id_value
-                for case_id_value in group
-                if case_id_value != str(case_id)
+                connected_id
+                for connected_id in group
+                if connected_id != str(case_id)
             ]
+
             break
 
     campaign_links = (
@@ -184,7 +170,7 @@ def build_investigation_report(
 
     verdict_result = evaluate_case(
         db=db,
-        case_id=case_id,
+        case_id=case_id
     )
 
     return {
@@ -197,5 +183,7 @@ def build_investigation_report(
         "campaigns": campaign_links,
         "verdict": verdict_result["verdict"],
         "score": verdict_result["score"],
+        "evidence_count": verdict_result["evidence_count"],
+        "authoritative_count": verdict_result["authoritative_count"],
         "explanation": verdict_result["explanation"],
     }

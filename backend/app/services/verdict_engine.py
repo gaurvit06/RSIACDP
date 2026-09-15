@@ -3,33 +3,20 @@ from sqlalchemy.orm import Session
 from app.models.evidence import Evidence
 
 
-# Evidence weights
 EVIDENCE_WEIGHTS = {
     "strong": 3,
     "medium": 2,
     "weak": 1,
 }
 
-
-# Verdict thresholds
 VERIFIED_SCAM_THRESHOLD = 6
 SUSPICIOUS_THRESHOLD = 3
 
 
 def calculate_evidence_score(
     db: Session,
-    case_id: str,
+    case_id: str
 ) -> dict:
-    """
-    Calculate a deterministic evidence score for a case.
-
-    Strong evidence = 3 points
-    Medium evidence = 2 points
-    Weak evidence = 1 point
-
-    The score is based only on stored evidence.
-    It does not depend on an LLM decision.
-    """
 
     evidence_items = (
         db.query(Evidence)
@@ -45,37 +32,46 @@ def calculate_evidence_score(
         "weak": 0,
     }
 
+    authoritative_count = 0
+
     for evidence in evidence_items:
 
-        reliability = evidence.reliability.lower().strip()
+        reliability = (
+            evidence.reliability
+            .lower()
+            .strip()
+        )
 
         if reliability in EVIDENCE_WEIGHTS:
 
             score += EVIDENCE_WEIGHTS[reliability]
+
             breakdown[reliability] += 1
+
+        if evidence.authoritative:
+            authoritative_count += 1
 
     return {
         "score": score,
         "breakdown": breakdown,
         "evidence_count": len(evidence_items),
+        "authoritative_count": authoritative_count,
     }
 
 
 def determine_verdict(
     score: int,
     evidence_count: int,
+    authoritative_count: int
 ) -> str:
-    """
-    Determine the final case verdict.
-
-    The system avoids making a strong accusation
-    when there is insufficient evidence.
-    """
 
     if evidence_count == 0:
         return "Insufficient Evidence"
 
-    if score >= VERIFIED_SCAM_THRESHOLD:
+    if (
+        score >= VERIFIED_SCAM_THRESHOLD
+        and authoritative_count >= 1
+    ):
         return "Verified Scam"
 
     if score >= SUSPICIOUS_THRESHOLD:
@@ -88,40 +84,48 @@ def generate_verdict_explanation(
     score: int,
     evidence_count: int,
     breakdown: dict,
-    verdict: str,
+    authoritative_count: int,
+    verdict: str
 ) -> str:
-    """
-    Generate a deterministic human-readable explanation.
-    """
 
     strong_count = breakdown.get("strong", 0)
     medium_count = breakdown.get("medium", 0)
     weak_count = breakdown.get("weak", 0)
 
     if verdict == "Verified Scam":
+
         return (
             f"The case has {evidence_count} evidence item(s) "
             f"with a total evidence score of {score}. "
             f"It contains {strong_count} strong, "
             f"{medium_count} medium, and {weak_count} weak "
-            f"evidence item(s). The evidence threshold for "
-            f"a Verified Scam verdict has been reached."
+            f"evidence item(s), including "
+            f"{authoritative_count} authoritative evidence item(s). "
+            f"The evidence threshold and authoritative evidence "
+            f"requirement for a Verified Scam verdict have been reached."
         )
 
     if verdict == "Suspicious":
+
         return (
             f"The case has {evidence_count} evidence item(s) "
             f"with a total evidence score of {score}. "
             f"It contains {strong_count} strong, "
             f"{medium_count} medium, and {weak_count} weak "
-            f"evidence item(s). The available evidence shows "
-            f"suspicious signals but does not reach the "
-            f"Verified Scam threshold."
+            f"evidence item(s). "
+            f"It has {authoritative_count} authoritative evidence "
+            f"item(s). The available evidence shows suspicious "
+            f"signals but does not satisfy the requirements "
+            f"for a Verified Scam verdict."
         )
 
     return (
         f"The case has {evidence_count} evidence item(s) "
         f"with a total evidence score of {score}. "
+        f"It contains {strong_count} strong, "
+        f"{medium_count} medium, and {weak_count} weak "
+        f"evidence item(s), including "
+        f"{authoritative_count} authoritative evidence item(s). "
         f"The available evidence is not sufficient to "
         f"support a stronger verdict."
     )
@@ -129,33 +133,26 @@ def generate_verdict_explanation(
 
 def evaluate_case(
     db: Session,
-    case_id: str,
+    case_id: str
 ) -> dict:
-    """
-    Complete deterministic case evaluation.
-
-    Steps:
-    1. Collect evidence
-    2. Calculate evidence score
-    3. Determine verdict
-    4. Generate explanation
-    """
 
     result = calculate_evidence_score(
         db=db,
-        case_id=case_id,
+        case_id=case_id
     )
 
     verdict = determine_verdict(
         score=result["score"],
         evidence_count=result["evidence_count"],
+        authoritative_count=result["authoritative_count"]
     )
 
     explanation = generate_verdict_explanation(
         score=result["score"],
         evidence_count=result["evidence_count"],
         breakdown=result["breakdown"],
-        verdict=verdict,
+        authoritative_count=result["authoritative_count"],
+        verdict=verdict
     )
 
     return {
@@ -163,6 +160,7 @@ def evaluate_case(
         "verdict": verdict,
         "score": result["score"],
         "evidence_count": result["evidence_count"],
+        "authoritative_count": result["authoritative_count"],
         "breakdown": result["breakdown"],
         "explanation": explanation,
     }

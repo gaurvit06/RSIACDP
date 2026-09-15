@@ -49,7 +49,8 @@ def create_evidence(
         source=evidence_data.source,
         source_url=evidence_data.source_url,
         result=evidence_data.result,
-        reliability=evidence_data.reliability
+        reliability=evidence_data.reliability,
+        authoritative=evidence_data.authoritative
     )
 
     db.add(evidence)
