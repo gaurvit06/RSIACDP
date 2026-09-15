@@ -1,0 +1,29 @@
+{
+    "input_type": "direct_text",
+    "processed_at": "2026-09-14T23:19:12.134693",
+    "extracted_text": "Congratulations! You have been selected for a work from home job. Contact HR at +91 98765 43210. Email hr@fakejobs.com. Register at https://fakejobs.com/register. Instagram @fakejobs123. ABC Technologies Pvt Ltd.",
+    "entities": {
+        "phone_numbers": [
+            "+919876543210"
+        ],
+        "emails": [
+            "hr@fakejobs.com"
+        ],
+        "urls": [
+            "https://fakejobs.com/register"
+        ],
+        "usernames": [
+            "@fakejobs123"
+        ],
+        "organizations": [
+            "ABC Technologies Pvt Ltd"
+        ]
+    },
+    "entity_counts": {
+        "phone_numbers": 1,
+        "emails": 1,
+        "urls": 1,
+        "usernames": 1,
+        "organizations": 1
+    }
+}
