@@ -24,26 +24,28 @@ from app.services.investigation_graph import (
 
 from app.services.verdict_engine import evaluate_case
 
+from app.services.privacy import (
+    mask_phone,
+    mask_email,
+    mask_upi,
+)
+
 
 def build_investigation_report(
     db: Session,
     case_id: str,
 ) -> dict:
     """
-    Build a complete investigation report for one case.
+    Build a privacy-aware investigation report for one case.
 
     The report combines:
     - Case information
-    - Extracted entities
+    - Masked extracted entities
     - Evidence and provenance
     - Connected cases
     - Campaign information
     - Deterministic verdict
     """
-
-    # ---------------------------------------------------------
-    # 1. Find the case
-    # ---------------------------------------------------------
 
     case = (
         db.query(Case)
@@ -54,13 +56,7 @@ def build_investigation_report(
     if case is None:
         raise ValueError("Case not found")
 
-
-    # ---------------------------------------------------------
-    # 2. Collect entities
-    # ---------------------------------------------------------
-
     entities = []
-
 
     phone_results = (
         db.query(Phone)
@@ -78,10 +74,11 @@ def build_investigation_report(
         entities.append(
             {
                 "entity_type": "phone",
-                "value": phone.normalized_number,
+                "value": mask_phone(
+                    phone.normalized_number
+                ),
             }
         )
-
 
     email_results = (
         db.query(Email)
@@ -99,10 +96,11 @@ def build_investigation_report(
         entities.append(
             {
                 "entity_type": "email",
-                "value": email.normalized_address,
+                "value": mask_email(
+                    email.normalized_address
+                ),
             }
         )
-
 
     domain_results = (
         db.query(Domain)
@@ -124,7 +122,6 @@ def build_investigation_report(
             }
         )
 
-
     upi_results = (
         db.query(UPI)
         .join(
@@ -141,14 +138,11 @@ def build_investigation_report(
         entities.append(
             {
                 "entity_type": "upi",
-                "value": upi.normalized_upi,
+                "value": mask_upi(
+                    upi.normalized_upi
+                ),
             }
         )
-
-
-    # ---------------------------------------------------------
-    # 3. Collect evidence
-    # ---------------------------------------------------------
 
     evidence = (
         db.query(Evidence)
@@ -161,11 +155,6 @@ def build_investigation_report(
         .all()
     )
 
-
-    # ---------------------------------------------------------
-    # 4. Find connected cases
-    # ---------------------------------------------------------
-
     graph = build_investigation_graph(db)
 
     connected_case_ids = []
@@ -173,21 +162,13 @@ def build_investigation_report(
     case_groups = find_connected_case_groups(graph)
 
     for group in case_groups:
-
         if str(case_id) in group:
-
             connected_case_ids = [
                 case_id_value
                 for case_id_value in group
                 if case_id_value != str(case_id)
             ]
-
             break
-
-
-    # ---------------------------------------------------------
-    # 5. Find campaigns containing this case
-    # ---------------------------------------------------------
 
     campaign_links = (
         db.query(Campaign)
@@ -201,34 +182,19 @@ def build_investigation_report(
         .all()
     )
 
-
-    # ---------------------------------------------------------
-    # 6. Calculate deterministic verdict
-    # ---------------------------------------------------------
-
     verdict_result = evaluate_case(
         db=db,
         case_id=case_id,
     )
 
-
-    # ---------------------------------------------------------
-    # 7. Build final report
-    # ---------------------------------------------------------
-
     return {
         "case_id": case.id,
         "input_type": case.input_type,
         "status": case.status,
-
         "entities": entities,
-
         "evidence": evidence,
-
         "connected_case_ids": connected_case_ids,
-
         "campaigns": campaign_links,
-
         "verdict": verdict_result["verdict"],
         "score": verdict_result["score"],
         "explanation": verdict_result["explanation"],

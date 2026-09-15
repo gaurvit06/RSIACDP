@@ -1,14 +1,14 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, String, Text
+from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
 from app.database.connection import Base
 
 
-class Case(Base):
-    __tablename__ = "cases"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(
         UUID(as_uuid=True),
@@ -16,26 +16,28 @@ class Case(Base):
         default=uuid.uuid4
     )
 
-    input_type = Column(
-        String(50),
+    username = Column(
+        String(100),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    password_hash = Column(
+        String(255),
         nullable=False
     )
 
-    original_content = Column(
-        Text,
-        nullable=True
-    )
-
-    status = Column(
+    role = Column(
         String(50),
         nullable=False,
-        default="new"
+        default="investigator"
     )
 
-    consent_given = Column(
+    is_active = Column(
         Boolean,
         nullable=False,
-        default=False
+        default=True
     )
 
     created_at = Column(

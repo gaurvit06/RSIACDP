@@ -7,7 +7,6 @@ from app.models.domain import Domain
 from app.models.upi import UPI
 from app.models.evidence import Evidence
 from app.models.campaign import Campaign
-
 from app.models.case_company import CaseCompany
 from app.models.case_recruiter import CaseRecruiter
 from app.models.case_phone import CasePhone
@@ -15,3 +14,4 @@ from app.models.case_email import CaseEmail
 from app.models.case_domain import CaseDomain
 from app.models.case_upi import CaseUPI
 from app.models.campaign_case import CampaignCase
+from app.models.user import User

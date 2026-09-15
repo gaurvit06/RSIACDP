@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class CaseCreate(BaseModel):
     input_type: str
     original_content: str | None = None
+    consent_given: bool = False
 
 
 class CaseResponse(BaseModel):
@@ -14,6 +15,7 @@ class CaseResponse(BaseModel):
     input_type: str
     original_content: str | None
     status: str
+    consent_given: bool
     created_at: datetime
 
     class Config:

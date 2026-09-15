@@ -5,6 +5,8 @@ from app.database.connection import get_db
 from app.models.case import Case
 from app.models.evidence import Evidence
 from app.schemas.evidence import EvidenceCreate, EvidenceResponse
+from app.core.security import get_current_user
+from app.models.user import User
 
 
 router = APIRouter(
@@ -19,8 +21,15 @@ router = APIRouter(
 )
 def create_evidence(
     evidence_data: EvidenceCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Add evidence to an investigation case.
+
+    Authentication is required.
+    """
+
     case = (
         db.query(Case)
         .filter(Case.id == evidence_data.case_id)
@@ -40,7 +49,7 @@ def create_evidence(
         source=evidence_data.source,
         source_url=evidence_data.source_url,
         result=evidence_data.result,
-        reliability=evidence_data.reliability,
+        reliability=evidence_data.reliability
     )
 
     db.add(evidence)
@@ -55,9 +64,16 @@ def create_evidence(
     response_model=list[EvidenceResponse]
 )
 def get_case_evidence(
-    case_id,
-    db: Session = Depends(get_db)
+    case_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Retrieve evidence belonging to a case.
+
+    Authentication is required.
+    """
+
     case = (
         db.query(Case)
         .filter(Case.id == case_id)

@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.services.entity_linking import link_entities_to_case
+from app.core.security import get_current_user
+from app.models.user import User
 
 
 router = APIRouter(
@@ -23,8 +25,15 @@ class EntityLinkRequest(BaseModel):
 @router.post("/link")
 def link_entities(
     entity_data: EntityLinkRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Link extracted entities to an investigation case.
+
+    Authentication is required.
+    """
+
     try:
         result = link_entities_to_case(
             db=db,

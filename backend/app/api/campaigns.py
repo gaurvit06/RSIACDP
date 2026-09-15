@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.campaign import Campaign
+from app.models.user import User
 from app.schemas.campaign import CampaignResponse
 from app.services.campaign_detection import detect_campaigns
+from app.core.security import get_current_user
 
 
 router = APIRouter(
@@ -21,8 +23,15 @@ def create_campaign(
     name: str,
     confidence: float = 0.0,
     status: str = "potential",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Create a campaign.
+
+    Authentication is required.
+    """
+
     campaign = Campaign(
         name=name,
         confidence=confidence,
@@ -41,11 +50,13 @@ def create_campaign(
     response_model=list[CampaignResponse]
 )
 def detect_campaigns_api(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Detect connected recruitment scam campaigns
-    from the investigation graph.
+    Detect connected recruitment scam campaigns.
+
+    Authentication is required.
     """
 
     return detect_campaigns(db)
@@ -56,8 +67,15 @@ def detect_campaigns_api(
     response_model=list[CampaignResponse]
 )
 def get_campaigns(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Retrieve detected campaigns.
+
+    Authentication is required.
+    """
+
     return (
         db.query(Campaign)
         .order_by(Campaign.created_at.desc())
@@ -70,9 +88,16 @@ def get_campaigns(
     response_model=CampaignResponse
 )
 def get_campaign(
-    campaign_id,
-    db: Session = Depends(get_db)
+    campaign_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Retrieve one campaign.
+
+    Authentication is required.
+    """
+
     campaign = (
         db.query(Campaign)
         .filter(Campaign.id == campaign_id)
