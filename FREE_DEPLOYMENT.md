@@ -1,6 +1,6 @@
 # No-charge hosted deployment guide
 
-This guide describes a $0 demonstration deployment for the existing Vercel, Render, and Supabase projects. It does not deploy anything or create provider resources. Do not start a paid trial, select a paid plan, attach a persistent disk, add Neo4j to Render, or enter a payment card. If a provider blocks the Free flow until billing information is added, stop and do not continue.
+This guide prepares a $0 demonstration deployment for the user-selected Vercel, Render, and Supabase stack. The Vercel project and Supabase project/bucket are user-reported; a Render Web Service has not been created. This guide does not deploy anything or create provider resources. Do not start a paid trial, select a paid plan, attach a persistent disk, add Neo4j to Render, or enter a payment card. If a provider blocks the Free flow until billing information is added, stop and do not continue.
 
 This architecture can run the application without paid services, but it is not a safe production home for real investigation evidence. Free services can pause, restart, lose local files, and lack managed database backups. Use synthetic or otherwise authorized low-risk evidence until an approved backup, privacy, and availability plan exists.
 
@@ -51,7 +51,7 @@ The API applies the checked-in Alembic migrations during startup. PostgreSQL is 
 
 The following listed dashboard variable is **unused and incorrect**: `ADMIN_REGISTRATION_CODE`. The application reads `INITIAL_INVESTIGATOR_CODE` and `INITIAL_REVIEWER_CODE`; remove `ADMIN_REGISTRATION_CODE` from any manually created Render environment group. Render preserves existing values omitted from a Blueprint, so check the dashboard if you created an environment group before the service.
 
-The following do not need to be set for this Free deployment:
+The following do not need to be set for this Free deployment. If any are already present in a Render service or environment group, remove them before relying on the PostgreSQL graph fallback:
 
 - `NEO4J_URI`, `NEO4J_HOST`, `NEO4J_USER`, `NEO4J_PASSWORD`, and `NEO4J_PASSWORD_SLASH_SAFE`: the application uses the PostgreSQL-derived graph fallback when Neo4j is unconfigured.
 - `ACCESS_TOKEN_MINUTES`, `PASSWORD_RESET_TOKEN_MINUTES`, login/registration/correction throttle values, campaign threshold, upload limit, RDAP timeouts, and RDAP response limit: code defaults apply unless an operator deliberately overrides them.
