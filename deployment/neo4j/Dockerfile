@@ -19,9 +19,15 @@ RUN set -eux; \
       https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.22.3/jackson-databind-2.22.3.jar; \
     echo '8a501126a385b25841915d839508f8a66e2a0dbc8a6709d055ef3b3e852b094c  '"$download_dir/jackson-core-2.22.3.jar" | sha256sum -c -; \
     echo '556db5439e206114346043f68d200497dc96a0bca62a360a81784092ebd0e0a9  '"$download_dir/jackson-databind-2.22.3.jar" | sha256sum -c -; \
+    neo4j_home="${NEO4J_HOME:-/var/lib/neo4j}"; \
+    test -d "$neo4j_home"; \
     for artifact in jackson-core jackson-databind; do \
-      matches="$(find "$NEO4J_HOME" -type f -name "$artifact-2.22.2.jar" -print)"; \
-      test -n "$matches"; \
+      matches="$(find -L "$neo4j_home" -type f -name "$artifact-2.22.2.jar" -print)"; \
+      if [ -z "$matches" ]; then \
+        echo "Expected vulnerable $artifact 2.22.2 jar not found under $neo4j_home; available versions:" >&2; \
+        find -L "$neo4j_home" -type f -name "$artifact-*.jar" -print >&2; \
+        exit 1; \
+      fi; \
       printf '%s\n' "$matches" | while IFS= read -r old_jar; do \
         jar_dir="$(dirname "$old_jar")"; \
         rm -f "$old_jar"; \
@@ -50,3 +56,4 @@ VOLUME ["/data", "/logs"]
 WORKDIR /var/lib/neo4j
 ENTRYPOINT ["tini", "-g", "--", "/usr/local/bin/render-entrypoint.sh"]
 CMD ["neo4j"]
+USER neo4j

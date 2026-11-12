@@ -7462,11 +7462,23 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 2. Fix the precise build failure, then verify strict Trivy scanning and runtime/E2E/recovery checks on the patched image.
 3. Cloud credentials/accounts, hosted deployment, cloud backup/restore, browser/accessibility review, and evaluation on authorized time-separated labels remain incomplete.
 
-## 2026-11-12 20:14 — Hosted Neo4j build failure diagnostics
+## 2026-11-12 — Hosted Neo4j build failure diagnostics
 
-- Run `43234340852` (`0ba356d`) failed in the Compose stack-start step while building the patched Neo4j image. Its public check annotation contained only the failing step and exit code. The public job-log API does not provide the build command output to this session.
-- Local C: space was about 515 MB with 5.5 GB of Docker images, 5.4 GB of volumes and 4.3 GB of build cache. No cleanup or full local Neo4j image build was attempted; existing local containers and data remain untouched.
-- Updated `.github/workflows/ci.yml` locally to build Neo4j separately with plain BuildKit progress, save the log, and publish a sanitized final-log annotation on failure before enforcing the build gate. This diagnostic update is not yet committed or pushed.
-- The patched Dockerfile still passes `docker build --check`; that verifies parsing only, not the apt upgrade, Maven downloads, SHA checks, jar replacement, flattened image, or runtime.
+- Run `43234340852` (`0ba356d`) failed while building the patched Neo4j image; its public annotation contained only the failing step and exit code. Local C: space was about 515 MB with several GB of Docker images, volumes, and build cache. No cleanup or full local image build was attempted; existing local containers and data remain untouched.
+- Added a dedicated hosted build step with plain BuildKit output and a sanitized failure annotation. Commit `2fc5754` pushed this diagnostic change. Hosted run [`43235150070`](https://github.com/gaurvit06/RSIACDP/actions/runs/43235150070) failed after 1m17s: the Jackson replacement guard found no exact `jackson-*-2.22.2.jar` match under `NEO4J_HOME`. The public annotation does not identify which artifact failed.
+- The failure annotation's 24-line log excerpt confirmed the Dockerfile guard, but did not expose the individual artifact's shell trace. The next image change follows filesystem symlinks during jar discovery and prints available matching versions if the exact vulnerable file is absent.
+- The flattened `scratch` stage also reset Docker image configuration, so the custom image now explicitly restores the documented `neo4j` runtime user.
 
-Next: rerun Compose config/YAML and whitespace checks; commit and push the diagnostic workflow change plus this status; inspect its annotations, fix the precise Docker build error, and then verify strict Trivy and complete hosted E2E/recovery. Do not weaken the scan gate. Hosted deployment/provider credentials, cloud recovery, browser/accessibility review, and authorized real-world evaluation remain incomplete.
+## 2026-11-12 19:51 IST — Neo4j image discovery fix prepared
+
+- Updated `deployment/neo4j/Dockerfile` to search with `find -L` under the configured Neo4j home (falling back to `/var/lib/neo4j`) and emit available Jackson jar paths before failing. The security update, pinned Maven SHA-256 checks, replacement, and strict Trivy gate remain intact.
+- Restored `USER neo4j` in the final flattened image stage so it does not run as root after `FROM scratch`.
+- Checks actually run: `docker build --check --file deployment/neo4j/Dockerfile .` passed (Dockerfile syntax/metadata only); `docker compose config --quiet` passed; `scripts/test-compose-config.ps1` passed; `git diff --check` passed.
+- A full local image build and Trivy scan were not run because of the previously recorded low disk space. These checks do not prove that the amended layer builds or passes security scanning.
+
+Next steps, in order:
+
+1. Review the Dockerfile diff, commit and push this fix with the updated engineering walkthrough and status file.
+2. Inspect the hosted build result. If jar discovery still fails, use the new diagnostic to locate the exact version/path; do not weaken the vulnerability gate.
+3. Require the hosted Neo4j image to build, have zero fixed High/Critical Trivy findings, start under the `neo4j` user, and pass the complete intake, graph, report, encrypted backup/restore, and rebuild checks.
+4. Continue with cloud account/provider setup, hosted deployment, deployed backup/restore, browser/accessibility review, and evaluation on an authorized time-separated dataset. These remain incomplete.
