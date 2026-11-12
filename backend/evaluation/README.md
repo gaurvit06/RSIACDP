@@ -6,7 +6,21 @@ From `backend`, run `python -m evaluation.generate_synthetic .test-runtime/synth
 
 Run `python -m evaluation.baseline_tfidf_logreg .test-runtime/synthetic-evaluation-v1/synthetic-input.jsonl .test-runtime/synthetic-evaluation-v1/tfidf-predictions.jsonl` for an actual baseline rehearsal. Save its stdout as a clearly labelled synthetic-only metrics artifact. These fixtures exercise the evaluation machinery, not real-world generalization: template overlap, simulated dates, email-only coverage and generator-defined labels make them unsuitable as evidence of deployment accuracy. Negative labels refer only to the complete fictional fixture universe. Do not import fictional source allegations into a production corpus. Full-pipeline and no-graph runs still require actual isolated application execution; an LLM/web-search comparison still requires a configured provider and traceable retrieval. This generator does not complete those comparisons.
 
-Evaluation is pending until a properly authorized, annotated dataset is available. Do not report synthetic or placeholder metrics as product performance. EMSCAD may be used as a separate baseline dataset, but it is not evidence of current performance on Indian recruitment scams.
+### Recorded synthetic-only rehearsal
+
+The generated `synthetic-evaluation-v1` artifact contains 108 cases (36 each in train, dev, and test); its input SHA-256 is `f458554cfd53ef57041047ff83f37e16904bad0a0348564fd9d3c4168d7c00f5`. The scorer was rerun against the saved TF-IDF/logistic-regression predictions on 2026-11-12 and reproduced these test-only values:
+
+| Measure | Synthetic result | Interpretation |
+| --- | ---: | --- |
+| Entity micro-F1 | 0.00 (36 false negatives) | This baseline intentionally predicts no entities. |
+| Campaign pairwise F1 | 0.00 (36 false negatives) | This baseline intentionally predicts no campaigns. |
+| Evidence-support precision | Undefined; recall 0.00 (18 false negatives) | It predicts no supported claims, so precision has no denominator. |
+| Narrow concern false-positive rate | 0/18 = 0.00 | Fictional labels only; this is not an estimate of real-world safety. |
+| Per-test-case classifier time | Mean 0.0158 ms; p95 0.0250 ms | TF-IDF transform and logistic prediction only; excludes training, the API, worker, OCR, evidence retrieval, graph linking, and I/O. |
+
+The scorer used 1,000 deterministic bootstrap resamples (seed `20261103`). Entity and campaign F1 intervals were `[0.00, 0.00]`; evidence-support precision had no valid resamples because there were no predicted support claims. The generated records use simulated dates, generator-defined labels, one email identifier type, and fictional `.invalid` addresses. These results show that the text-classifier comparator does not provide the investigation pipeline's extraction, provenance, or campaign-link capabilities; they are not evidence of product performance and must not be presented as a real-world metric.
+
+Evaluation on independent, properly annotated recruitment-scam cases remains pending. Do not report synthetic or placeholder metrics as product performance. EMSCAD may be used as a separate baseline dataset, but it is not evidence of current performance on Indian recruitment scams.
 
 Evaluation inputs and outputs can contain submitted text, personal identifiers, case labels, campaign labels, source references, and predictions. Use pseudonymous, non-identifying `case_id` and `campaign_id` values; keep any re-identification key outside the evaluation directory. Store input JSONL, prediction files, and provenance sidecars in access-controlled storage, exclude them from Git and container contexts, and delete them under the dataset's approved retention policy. The LLM/web-search runner writes only allowlisted provenance fields and standardized retrieval error codes, but operators must still ensure their metadata and source references contain no credentials, signed URLs, personal data, or confidential query text.
 

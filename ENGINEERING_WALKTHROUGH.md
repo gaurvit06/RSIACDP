@@ -923,6 +923,7 @@ External references checked on 12 November 2026: [official PostgreSQL Alpine Doc
 3. Kept predictions out of generated gold annotations; ran the existing TF-IDF/logistic-regression implementation to obtain actual predictions and timings.
 4. Validated 108 cases and 36 test predictions. Stored generated artifacts in ignored test-runtime storage.
 5. Documented the limited email-only coverage, template overlap, simulated dates and absence of independent annotation. Synthetic rehearsal is not real-world performance validation.
+6. On 12 Nov 2026, verified the input SHA-256 against its manifest and reran the scorer on the saved test predictions. The 36-case synthetic test split measured entity F1 `0.00` (36 FN), campaign pairwise F1 `0.00` (36 FN), evidence-support precision undefined with recall `0.00` (18 FN), narrow concern false-positive rate `0/18`, and model-only classifier time 0.0158 ms mean / 0.0250 ms p95. The TF-IDF baseline intentionally predicts no entities, campaign groups, or supported claims. These fixtures and this timing boundary do not measure product accuracy or API/worker processing performance.
 
 ## Vercel, Render, and Supabase deployment stage
 
