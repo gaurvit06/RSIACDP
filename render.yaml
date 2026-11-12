@@ -1,8 +1,22 @@
-envVarGroups:
-  - name: rsiacdp-shared-secrets
+# $0 deployment configuration. This Blueprint intentionally creates exactly
+# one Free web service; it does not create a paid worker, private service,
+# Neo4j instance, persistent disk, or managed database.
+services:
+  - type: web
+    name: rsiacdp-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: codex/initial-platform
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    autoDeploy: checksPass
+    healthCheckPath: /health/ready
     envVars:
       - key: APP_ENV
         value: production
+      - key: RUN_INLINE_WORKER
+        value: "true"
       - key: UPLOAD_STORAGE_BACKEND
         value: supabase
       - key: SUPABASE_STORAGE_BUCKET
@@ -11,60 +25,9 @@ envVarGroups:
         value: "180"
       - key: RDAP_ENABLED
         value: "false"
-      - key: NEO4J_USER
-        value: neo4j
-      - key: NEO4J_PASSWORD
-        generateValue: true
-      - key: NEO4J_PASSWORD_SLASH_SAFE
-        value: "true"
-      - key: JWT_SECRET
-        generateValue: true
-      - key: UPLOAD_ENCRYPTION_KEY
-        generateValue: true
-
-services:
-  - type: pserv
-    name: rsiacdp-neo4j
-    runtime: docker
-    plan: 1c-2g
-    region: singapore
-    dockerfilePath: ./deployment/neo4j/Dockerfile
-    dockerContext: .
-    autoDeploy: checksPass
-    envVars:
-      - fromGroup: rsiacdp-shared-secrets
-      - key: NEO4J_HOST
-        fromService:
-          name: rsiacdp-neo4j
-          type: pserv
-          property: host
-      - key: NEO4J_server_memory_heap_initial__size
-        value: 512m
-      - key: NEO4J_server_memory_heap_max__size
-        value: 1G
-    disk:
-      name: neo4j-data
-      mountPath: /data
-      sizeGB: 2
-
-  - type: web
-    name: rsiacdp-api
-    runtime: docker
-    plan: 1c-2g
-    region: singapore
-    branch: codex/initial-platform
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    autoDeploy: checksPass
-    healthCheckPath: /health/ready
-    preDeployCommand: python -m alembic upgrade head
-    envVars:
-      - fromGroup: rsiacdp-shared-secrets
-      - key: NEO4J_HOST
-        fromService:
-          name: rsiacdp-neo4j
-          type: pserv
-          property: host
+      - key: FORWARDED_ALLOW_IPS
+        # Keep proxy headers untrusted until the actual Render/Vercel chain is verified.
+        value: 127.0.0.1
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
@@ -73,34 +36,11 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: UPLOAD_ENCRYPTION_KEY
+        generateValue: true
       - key: INITIAL_INVESTIGATOR_CODE
         generateValue: true
       - key: INITIAL_REVIEWER_CODE
         generateValue: true
-      - key: FORWARDED_ALLOW_IPS
-        # Keep proxy headers untrusted until the actual Render/Vercel chain is verified.
-        value: 127.0.0.1
-
-  - type: worker
-    name: rsiacdp-worker
-    runtime: docker
-    plan: 1c-2g
-    region: singapore
-    branch: codex/initial-platform
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    dockerCommand: python -m app.worker
-    autoDeploy: checksPass
-    envVars:
-      - fromGroup: rsiacdp-shared-secrets
-      - key: NEO4J_HOST
-        fromService:
-          name: rsiacdp-neo4j
-          type: pserv
-          property: host
-      - key: DATABASE_URL
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false

@@ -6,6 +6,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from threading import Event
 from sqlalchemy import select, or_, and_, delete
 from sqlalchemy.orm import Session
 from .db import SessionLocal
@@ -278,7 +279,8 @@ def purge_expired_records(now: datetime | None = None) -> int:
     return deleted_cases
 
 
-def main():
+def run_worker(stop_event: Event | None = None) -> None:
+    """Poll the durable PostgreSQL queue until asked to stop, if stoppable."""
     validate_database_url(settings)
     validate_upload_encryption(settings)
     validate_upload_storage(settings)
@@ -286,7 +288,8 @@ def main():
     last_retention = 0.0
     retention_interval = 24 * 60 * 60
     retention_failure_retry = 60 * 60
-    while True:
+    retry_delay = 2.0
+    while stop_event is None or not stop_event.is_set():
         now_monotonic = time.monotonic()
         if now_monotonic - last_retention >= retention_interval:
             try:
@@ -301,24 +304,43 @@ def main():
                 last_retention = time.monotonic() - retention_interval + retention_failure_retry
             else:
                 last_retention = time.monotonic()
-        with SessionLocal() as db:
-            # SKIP LOCKED allows multiple worker replicas without double processing.
-            with db.begin():
-                retry_before = datetime.now(timezone.utc) - timedelta(minutes=10)
-                job = db.scalar(select(ProcessingJob).where(or_(ProcessingJob.status == "queued", and_(ProcessingJob.status == "processing", ProcessingJob.updated_at < retry_before, ProcessingJob.attempts < 3))).order_by(ProcessingJob.created_at).with_for_update(skip_locked=True).limit(1))
-                if job:
-                    job_id = job.id
-                    job.status = "processing"
-                    job.attempts += 1
-                else:
-                    job_id = None
-            if job_id:
-                current = db.get(ProcessingJob, job_id)
-                if current:
-                    process_job(db, current)
+        try:
+            with SessionLocal() as db:
+                # SKIP LOCKED allows multiple worker replicas without double processing.
+                with db.begin():
+                    retry_before = datetime.now(timezone.utc) - timedelta(minutes=10)
+                    job = db.scalar(select(ProcessingJob).where(or_(ProcessingJob.status == "queued", and_(ProcessingJob.status == "processing", ProcessingJob.updated_at < retry_before, ProcessingJob.attempts < 3))).order_by(ProcessingJob.created_at).with_for_update(skip_locked=True).limit(1))
+                    if job:
+                        job_id = job.id
+                        job.status = "processing"
+                        job.attempts += 1
+                    else:
+                        job_id = None
+                if job_id:
+                    current = db.get(ProcessingJob, job_id)
+                    if current:
+                        process_job(db, current)
             projection_work = process_graph_projection_once()
-            if not job_id and not projection_work:
+        except Exception as exc:
+            # Database/network failures must not silently kill an in-process
+            # worker. Keep exception contents out of logs and back off retries.
+            log.error("Worker iteration failed (%s)", type(exc).__name__)
+            if stop_event is None:
+                time.sleep(retry_delay)
+            else:
+                stop_event.wait(retry_delay)
+            retry_delay = min(retry_delay * 2, 60.0)
+            continue
+        retry_delay = 2.0
+        if not job_id and not projection_work:
+            if stop_event is None:
                 time.sleep(2)
+            else:
+                stop_event.wait(2)
+
+
+def main() -> None:
+    run_worker()
 
 
 if __name__ == "__main__":

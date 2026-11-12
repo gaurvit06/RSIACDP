@@ -14,6 +14,17 @@ $renderProxyTrust = [regex]::Match($renderBlueprint, '(?ms)-\s*key:\s*FORWARDED_
 if (-not $renderProxyTrust.Success -or $renderProxyTrust.Groups["value"].Value.Trim().Trim('"') -ne "127.0.0.1") {
     throw "Render must keep Uvicorn forwarded-header trust loopback-only until the hosted proxy chain has been verified; never use a wildcard."
 }
+$renderServiceTypes = @([regex]::Matches($renderBlueprint, '(?m)^\s*-\s*type:\s*(?<type>[a-z]+)\s*$') | ForEach-Object { $_.Groups["type"].Value })
+if ($renderServiceTypes.Count -ne 1 -or $renderServiceTypes[0] -ne "web" -or
+    $renderBlueprint -notmatch '(?m)^\s*plan:\s*free\s*$' -or
+    $renderBlueprint -match '(?m)^\s*(?:preDeployCommand|disk):' -or
+    $renderBlueprint -match '(?m)^\s*-\s*type:\s*(?:worker|pserv|cron|keyvalue)\s*$') {
+    throw "Render's default Blueprint must create only a Free web service and must not define a paid-only pre-deploy command, disk, worker, or private service."
+}
+if ($renderBlueprint -notmatch '(?ms)-\s*key:\s*RUN_INLINE_WORKER\s*\r?\n\s*value:\s*["'']?true["'']?\s*$' -or
+    $renderBlueprint -match 'ADMIN_REGISTRATION_CODE') {
+    throw "Free Render deployment must run the durable worker inside the API and must not configure the unused ADMIN_REGISTRATION_CODE."
+}
 
 $exampleLines = Get-Content -LiteralPath $examplePath
 if ($exampleLines | Where-Object { $_ -match '^\s*DATABASE_URL\s*=' }) {

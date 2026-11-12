@@ -16,7 +16,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent
 TESTS = ROOT / "tests"
-ISOLATED_MODULES = ("test_api_flow.py", "test_proxy_headers.py")
+ISOLATED_MODULES = ("test_api_flow.py", "test_inline_worker_api.py", "test_proxy_headers.py")
 
 
 def load_unit_suite() -> unittest.TestSuite:

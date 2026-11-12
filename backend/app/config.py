@@ -33,6 +33,7 @@ class Settings:
     rdap_enabled: bool = os.getenv("RDAP_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
     rdap_timeout_seconds: float = float(os.getenv("RDAP_TIMEOUT_SECONDS", "5"))
     rdap_max_response_bytes: int = int(os.getenv("RDAP_MAX_RESPONSE_BYTES", "1048576"))
+    run_inline_worker: bool = os.getenv("RUN_INLINE_WORKER", "false").strip().lower() in {"1", "true", "yes", "on"}
     web_origin: str = os.getenv("WEB_ORIGIN", "http://localhost:5173")
     initial_investigator_code: str = os.getenv("INITIAL_INVESTIGATOR_CODE", "")
     initial_reviewer_code: str = os.getenv("INITIAL_REVIEWER_CODE", "")

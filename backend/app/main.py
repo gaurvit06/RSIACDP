@@ -33,6 +33,7 @@ from .upload_storage import delete_upload, ensure_upload_storage, store_upload
 from .privacy import mask_identifier, redact_data, redact_source_ref, redact_text
 from .public_status import public_correction_status
 from .reporting import render_markdown_report
+from .worker_runtime import InlineWorkerRuntime
 
 upload_log = logging.getLogger("casework.upload")
 
@@ -81,7 +82,16 @@ async def lifespan(app: FastAPI):
     ensure_upload_storage()
     migration_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(migration_config, "head")
-    yield
+    inline_worker = None
+    if settings.run_inline_worker:
+        from .worker import run_worker
+        inline_worker = InlineWorkerRuntime(run_worker)
+        inline_worker.start()
+    try:
+        yield
+    finally:
+        if inline_worker is not None:
+            inline_worker.stop()
 
 app = FastAPI(title="Recruitment Scam Investigation Platform API", version="0.1.0", lifespan=lifespan)
 

@@ -16,7 +16,10 @@ SPEC.loader.exec_module(runner)
 
 class CiRunnerTests(unittest.TestCase):
     def test_api_flow_and_proxy_suites_are_explicitly_isolated(self):
-        self.assertEqual(runner.ISOLATED_MODULES, ("test_api_flow.py", "test_proxy_headers.py"))
+        self.assertEqual(
+            runner.ISOLATED_MODULES,
+            ("test_api_flow.py", "test_inline_worker_api.py", "test_proxy_headers.py"),
+        )
 
     def test_isolated_suite_runs_unittest_in_a_fresh_interpreter(self):
         expected = [
