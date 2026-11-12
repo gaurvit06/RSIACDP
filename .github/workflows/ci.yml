@@ -35,9 +35,6 @@ jobs:
       INITIAL_INVESTIGATOR_CODE: test-only-initial-investigator-code-123456
       INITIAL_REVIEWER_CODE: test-only-separate-reviewer-code-abcdef7890
       UPLOAD_DIR: ./private_uploads
-      TEMP: ${{ runner.temp }}
-      TMP: ${{ runner.temp }}
-      TMPDIR: ${{ runner.temp }}
       RSAICDP_PROVISIONING_TEST_DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
       RSAICDP_RETIREMENT_TEST_DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
     steps:
@@ -60,6 +57,10 @@ jobs:
           DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
         run: python -m alembic upgrade head
       - name: Run backend unit and isolated API/proxy integration suites
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
         run: python run_ci_tests.py
       - name: Compile backend and evaluation modules
         run: python -m compileall -q app tests evaluation

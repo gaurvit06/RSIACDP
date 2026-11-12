@@ -7353,3 +7353,10 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - Runtime secrets, uploads, databases, dependencies and generated synthetic evaluation output remain ignored.
 - Preparing initial commit on codex/initial-platform. Hosted CI results are pending; publication does not establish deployment readiness.
 - User selected Vercel frontend, Render API/worker and Supabase PostgreSQL. Provider-specific deployment, shared private storage and Neo4j hosting remain to be implemented/configured and verified.
+
+## 2026-11-12 18:18 — Hosted CI workflow validation fix
+
+- Initial commit 11a0eea was pushed and verified against origin/codex/initial-platform.
+- GitHub run 43221200266 failed before scheduling jobs: runner.temp was not recognized in the backend job-level environment block (lines 38–40).
+- Moved TEMP/TMP/TMPDIR expressions to the backend test step environment, retaining runner-specific temporary directories where the context is available.
+- This fixes workflow configuration, not an application test failure. Hosted execution must verify the revised workflow; no test pass is claimed.
