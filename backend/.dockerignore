@@ -1,0 +1,13 @@
+.env
+.env.*
+.venv/
+.pydeps/
+.test-runtime/
+.test-sandbox-tmp/
+__pycache__/
+*.py[cod]
+*.db
+private_uploads/
+uploads/
+tests/
+evaluation/

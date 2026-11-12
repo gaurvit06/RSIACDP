@@ -1,0 +1,9 @@
+{
+  "name": "recruitment-investigation-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "tsc -b && vite build", "test:redaction": "node --experimental-strip-types --test tests/*.test.ts" },
+  "dependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "react": "latest", "react-dom": "latest", "lucide-react": "^0.468.0" },
+  "devDependencies": { "typescript": "latest", "@types/react": "latest", "@types/react-dom": "latest" }
+}

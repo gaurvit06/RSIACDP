@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+dist/
+*.tsbuildinfo
+uploads/
+.pytest_cache/
+backend/.pydeps/
+backend/.test-runtime/
+backend/.test-sandbox-tmp/
+backend/*.db
+# Bundled Python 3.12 test dependency install; keep generated packages out of source control.
+.test-sandbox-tmp/
+backups/

@@ -1,0 +1,261 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.15-alpine3.24
+        env:
+          POSTGRES_USER: rsaicdp_ci
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: rsaicdp_provisioning_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rsaicdp_ci -d rsaicdp_provisioning_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: testing
+      DATABASE_URL: sqlite:///./.test-runtime/ci.db
+      JWT_SECRET: ci-only-secret-not-for-deployment-0123456789
+      INITIAL_INVESTIGATOR_CODE: test-only-initial-investigator-code-123456
+      INITIAL_REVIEWER_CODE: test-only-separate-reviewer-code-abcdef7890
+      UPLOAD_DIR: ./private_uploads
+      TEMP: ${{ runner.temp }}
+      TMP: ${{ runner.temp }}
+      TMPDIR: ${{ runner.temp }}
+      RSAICDP_PROVISIONING_TEST_DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
+      RSAICDP_RETIREMENT_TEST_DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Audit backend dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit==2.10.1
+          pip-audit -r requirements.txt
+      - name: Prepare isolated test paths
+        run: mkdir -p .test-runtime private_uploads
+      - name: Migrate isolated PostgreSQL concurrency-test database
+        env:
+          DATABASE_URL: postgresql+psycopg://rsaicdp_ci:ci-only-password@127.0.0.1:5432/rsaicdp_provisioning_test
+        run: python -m alembic upgrade head
+      - name: Run backend unit and isolated API/proxy integration suites
+        run: python run_ci_tests.py
+      - name: Compile backend and evaluation modules
+        run: python -m compileall -q app tests evaluation
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit frontend dependencies
+        run: pnpm audit
+      - name: Build frontend
+        run: pnpm run build
+      - name: Run redaction tests
+        run: pnpm run test:redaction
+
+  compose-config:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      NEO4J_PASSWORD: ci-only-neo4j-password
+      JWT_SECRET: ci-only-jwt-secret-not-for-deployment-0123456789
+      UPLOAD_ENCRYPTION_KEY: Y2ktb25seS11cGxvYWQtZW5jcnlwdGlvbi1rZXktMzI=
+      INITIAL_INVESTIGATOR_CODE: ci-only-investigator-setup-code-123456
+      INITIAL_REVIEWER_CODE: ci-only-reviewer-setup-code-abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Verify required secret and Neo4j health-check wiring
+        shell: pwsh
+        run: ./scripts/test-compose-config.ps1
+
+  compose-e2e:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_DB: rsaicdp_e2e
+      POSTGRES_USER: rsaicdp_e2e
+      POSTGRES_PASSWORD: ci-only-postgres-password-0123456789
+      NEO4J_PASSWORD: ci-only-neo4j-password-0123456789
+      JWT_SECRET: ci-only-jwt-secret-not-for-deployment-0123456789
+      UPLOAD_ENCRYPTION_KEY: Y2ktb25seS11cGxvYWQtZW5jcnlwdGlvbi1rZXktMzI=
+      INITIAL_INVESTIGATOR_CODE: ci-only-initial-investigator-code-123456
+      INITIAL_REVIEWER_CODE: ci-only-separate-reviewer-code-abcdef
+      RDAP_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the PostgreSQL, Neo4j, API, worker, and web stack
+        run: docker compose up --build --wait --wait-timeout 300
+      - name: Pull the production TLS proxy image for scanning
+        run: docker pull caddy:2.11.9-alpine
+      - name: Scan PostgreSQL image for fixed high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: rsaicdp-postgres:16.15-alpine3.24
+          format: table
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan Neo4j image for fixed high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: neo4j:5.26.33-community-trixie
+          format: table
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+      - name: Scan Caddy image for fixed high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: caddy:2.11.9-alpine
+          format: table
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          trivyignores: .trivyignore.yaml
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+      - name: Verify in-container image and scanned-PDF OCR
+        run: docker compose exec -T worker python -m app.verify_ocr
+      - name: Create a synthetic PDF for the upload workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/.test-runtime
+          worker_id=$(docker compose ps -q worker)
+          docker compose exec -T worker python -c 'import fitz; d=fitz.open(); p=d.new_page(); p.insert_text((72,72), "Synthetic recruitment inquiry; contact pdf-case@example.com"); d.save("/tmp/rsaicdp-e2e.pdf")'
+          docker cp "$worker_id:/tmp/rsaicdp-e2e.pdf" backend/.test-runtime/rsaicdp-e2e.pdf
+      - name: Verify investigator intake, processing, graph linking, reports, and corrections
+        shell: pwsh
+        run: ./scripts/test-compose-e2e.ps1 -AllowSyntheticWrites -PdfPath backend/.test-runtime/rsaicdp-e2e.pdf -ExerciseNeo4jOutage
+      - name: Verify encrypted backup, manifest key identity, and live restore on disposable data
+        shell: pwsh
+        run: ./scripts/test-compose-backup-restore.ps1 -AllowSyntheticWrites -RequirePrivateUpload
+      - name: Verify migrations and rebuild Neo4j from PostgreSQL
+        run: |
+          docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT version_num FROM alembic_version"'
+          docker compose exec -T worker python -m app.graph_rebuild
+      - name: Stop the isolated Compose stack
+        if: always()
+        run: docker compose down -v
+
+  web-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Caddy configuration without network access
+        run: >-
+          docker run --rm --network none -e PUBLIC_DOMAIN=example.invalid
+          --mount "type=bind,src=$PWD/Caddyfile,dst=/etc/caddy/Caddyfile,readonly"
+          caddy:2.11.9-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Build API and worker image
+        run: docker build -t rsaicdp-api:ci ./backend
+      - name: Build frontend container
+        run: docker build --build-arg VITE_API_URL= -t rsaicdp-web:ci ./frontend
+      - name: Scan API image for fixed high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: rsaicdp-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan web image for fixed high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: rsaicdp-web:ci
+          format: table
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+      - name: Verify Nginx startup, security headers, and same-origin API proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create rsaicdp-web-smoke
+          mkdir -p .ci-api/api
+          printf 'same-origin-api-smoke' > .ci-api/api/ping
+          cleanup() {
+            docker rm -f rsaicdp-web-smoke-container rsaicdp-api-smoke-container >/dev/null 2>&1 || true
+            docker network rm rsaicdp-web-smoke >/dev/null 2>&1 || true
+            rm -rf .ci-api
+          }
+          trap cleanup EXIT
+          docker run -d --name rsaicdp-api-smoke-container --network rsaicdp-web-smoke --network-alias api --mount "type=bind,src=$PWD/.ci-api,dst=/srv,readonly" --workdir /srv python:3.12-alpine python -m http.server 8000
+          docker run -d --name rsaicdp-web-smoke-container --network rsaicdp-web-smoke -e MAX_UPLOAD_BYTES=00002097152 -p 127.0.0.1:8080:80 rsaicdp-web:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then break; fi
+            sleep 1
+          done
+          docker exec rsaicdp-web-smoke-container nginx -t
+          docker exec rsaicdp-web-smoke-container grep -q 'client_max_body_size 2112k' /etc/nginx/conf.d/default.conf
+          if docker run --rm -e MAX_UPLOAD_BYTES=52428801 rsaicdp-web:ci; then
+            echo 'Nginx accepted an upload limit above the configured application maximum.' >&2
+            exit 1
+          fi
+          headers=$(curl --fail --silent --show-error --dump-header - --output /dev/null http://127.0.0.1:8080/)
+          grep -qi "Content-Security-Policy:.*connect-src 'self'" <<< "$headers"
+          grep -qi 'Permissions-Policy: camera=(), microphone=(), geolocation=()' <<< "$headers"
+          grep -qi 'X-Content-Type-Options: nosniff' <<< "$headers"
+          grep -qi 'Referrer-Policy: no-referrer' <<< "$headers"
+          grep -qi 'X-Frame-Options: DENY' <<< "$headers"
+          proxy_body=$(curl --fail --silent --show-error http://127.0.0.1:8080/api/ping)
+          test "$proxy_body" = 'same-origin-api-smoke'
+
+  operations-scripts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise backup encryption and backup/restore orchestration
+        shell: pwsh
+        run: |
+          ./scripts/test-backup-crypto.ps1
+          ./scripts/test-backup.ps1
+          ./scripts/test-restore.ps1
+          ./scripts/test-backup-recovery.ps1
