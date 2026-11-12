@@ -19,18 +19,16 @@ RUN set -eux; \
       https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.22.3/jackson-databind-2.22.3.jar; \
     echo '8a501126a385b25841915d839508f8a66e2a0dbc8a6709d055ef3b3e852b094c  '"$download_dir/jackson-core-2.22.3.jar" | sha256sum -c -; \
     echo '556db5439e206114346043f68d200497dc96a0bca62a360a81784092ebd0e0a9  '"$download_dir/jackson-databind-2.22.3.jar" | sha256sum -c -; \
-    neo4j_home="${NEO4J_HOME:-/var/lib/neo4j}"; \
-    test -d "$neo4j_home"; \
     for artifact in jackson-core jackson-databind; do \
-      matches="$(find -L "$neo4j_home" -type f -name "$artifact-2.22.2.jar" -print)"; \
+      matches="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name "$artifact-2.22.2.jar" -print 2>/dev/null || true)"; \
       if [ -z "$matches" ]; then \
-        fixed_matches="$(find -L "$neo4j_home" -type f -name "$artifact-2.22.3.jar" -print)"; \
+        fixed_matches="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name "$artifact-2.22.3.jar" -print 2>/dev/null || true)"; \
         if [ -n "$fixed_matches" ]; then \
           echo "$artifact is already at fixed version 2.22.3"; \
           continue; \
         fi; \
-        echo "Expected $artifact 2.22.2 or fixed 2.22.3 jar not found under $neo4j_home; available versions:" >&2; \
-        find -L "$neo4j_home" -type f -name "$artifact-*.jar" -print >&2; \
+        echo "Expected $artifact 2.22.2 or fixed 2.22.3 jar not found in image; available versions:" >&2; \
+        find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name "$artifact-*.jar" -print 2>/dev/null >&2 || true; \
         exit 1; \
       fi; \
       printf '%s\n' "$matches" | while IFS= read -r old_jar; do \
@@ -38,6 +36,8 @@ RUN set -eux; \
         rm -f "$old_jar"; \
         install -m 0644 "$download_dir/$artifact-2.22.3.jar" "$jar_dir/$artifact-2.22.3.jar"; \
       done; \
+      remaining="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name "$artifact-2.22.2.jar" -print 2>/dev/null || true)"; \
+      test -z "$remaining"; \
     done; \
     rm -rf "$download_dir"
 
