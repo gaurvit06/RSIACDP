@@ -1,4 +1,4 @@
-FROM postgres:16.15-alpine3.24 AS patched
+FROM postgres:18.4-alpine3.24 AS patched
 
 RUN apk upgrade --no-cache \
     && apk add --no-cache su-exec \
