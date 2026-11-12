@@ -7482,3 +7482,10 @@ Next steps, in order:
 2. Inspect the hosted build result. If jar discovery still fails, use the new diagnostic to locate the exact version/path; do not weaken the vulnerability gate.
 3. Require the hosted Neo4j image to build, have zero fixed High/Critical Trivy findings, start under the `neo4j` user, and pass the complete intake, graph, report, encrypted backup/restore, and rebuild checks.
 4. Continue with cloud account/provider setup, hosted deployment, deployed backup/restore, browser/accessibility review, and evaluation on an authorized time-separated dataset. These remain incomplete.
+
+## 2026-11-12 19:59 IST — Improve hosted Neo4j build diagnostics
+
+- Run [`43236626913`](https://github.com/gaurvit06/RSIACDP/actions/runs/43236626913) (`593d3c1`) reached the Compose job and failed at the same Jackson replacement guard after the symlink-aware search. The public annotation still does not show the concise shell trace needed to identify the artifact/path; the overall workflow was still finishing other jobs when checked.
+- Updated `.github/workflows/ci.yml` to extract the relevant Docker/BuildKit shell trace, checksum, missing-file, Jackson path, and failure lines and publish each as a short sanitized annotation. This is diagnostic-only; it keeps build and vulnerability enforcement strict.
+- Checks actually run: embedded Node script passed `node --check`; GitHub Actions YAML parsed successfully using PyYAML in the existing worker image; `docker compose config --quiet`, `scripts/test-compose-config.ps1`, and `git diff --check` passed.
+- Next: commit/push this diagnostic improvement, inspect the next hosted result for the exact artifact and path, and patch based on that evidence. Do not widen the file search or ignore scanner findings without confirming the actual image contents.

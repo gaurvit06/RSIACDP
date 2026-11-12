@@ -949,3 +949,10 @@ Primary deployment references: [Vercel external rewrites](https://vercel.com/doc
 3. Reviewed the `FROM scratch` flattening stage's image metadata. Copying the filesystem does not copy the parent image's Docker `USER` setting, so explicitly set `USER neo4j` to preserve the standard non-root runtime.
 4. Locally ran `docker build --check --file deployment/neo4j/Dockerfile .`, `docker compose config --quiet`, `scripts/test-compose-config.ps1`, and `git diff --check`; each passed. The Docker build check validates syntax/metadata only; no full image build or local vulnerability scan was run because the machine's Docker storage remains space-constrained.
 5. Next: push the change and require hosted CI to validate the full Docker build, zero fixed High/Critical Trivy findings, non-root runtime, full application E2E, encrypted recovery, and graph rebuild. Until those hosted checks pass, the patched image is not ready to deploy.
+
+## 9.89 Make hosted Neo4j build traces actionable
+
+1. Follow-up run [`43236626913`](https://github.com/gaurvit06/RSIACDP/actions/runs/43236626913) still failed at the Jackson replacement guard after switching the search to symlink-following. The public GitHub Actions annotation only showed the Dockerfile source excerpt and final BuildKit failure, not the missing-artifact path or command trace.
+2. Changed the CI failure reporter to pick out the shell trace, Maven checksum results, missing-file message, available Jackson paths, and BuildKit error lines, then emit them as short, individually sanitized check annotations. It does not alter build or Trivy acceptance criteria.
+3. Parsed the workflow YAML, ran `node --check` on the embedded reporter, reran `docker compose config --quiet` and `scripts/test-compose-config.ps1`, and ran `git diff --check`; all passed.
+4. Push the diagnostic improvement, then use the next hosted trace to identify the exact package layout before changing the image patch logic. Do not claim the Neo4j image is secure or deployable until its hosted scan and complete runtime/recovery checks pass.

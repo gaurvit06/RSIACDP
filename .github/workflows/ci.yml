@@ -136,14 +136,23 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const lines = fs.readFileSync('neo4j-build.log', 'utf8').trim().split(/\r?\n/).slice(-24);
-          const message = lines
-            .map((line) => line.replace(/(password|secret|token|api[_-]?key|authorization)(\s*[:=]\s*)\S+/gi, '$1$2[REDACTED]'))
-            .join('\n')
+          const lines = fs.readFileSync('neo4j-build.log', 'utf8').split(/\r?\n/);
+          const relevant = lines.filter((line) =>
+            /Expected vulnerable|available versions|jackson-(?:core|databind).*\.jar|sha256sum|checksum|not found|No such file|failed to solve|\bERROR\b|\+\s*(?:curl|echo|sha256sum|neo4j_home|test|matches|find|install|rm)\b/i.test(line),
+          );
+          const diagnostics = (relevant.length ? relevant : lines.slice(-12)).slice(-20);
+          const sanitize = (line) => line
+            .replace(/(password|secret|token|api[_-]?key|authorization)(\s*[:=]\s*)\S+/gi, '$1$2[REDACTED]')
+            .slice(0, 1000)
             .replaceAll('%', '%25')
             .replaceAll('\r', '%0D')
             .replaceAll('\n', '%0A');
-          process.stdout.write('::error title=Neo4j image build failure::' + message + '\n');
+          for (const line of diagnostics) {
+            process.stdout.write('::notice title=Neo4j image build diagnostic::' + sanitize(line) + '\n');
+          }
+          if (!diagnostics.length) {
+            process.stdout.write('::error title=Neo4j image build failure::Build failed, but the log contained no diagnostic lines.\n');
+          }
           NODE
       - name: Enforce Neo4j image build result
         if: always() && steps.build_neo4j.outcome == 'failure'
