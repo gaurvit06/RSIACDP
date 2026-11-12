@@ -89,9 +89,9 @@ Before the first deployment, inspect the existing project using the Supabase SQL
 
 Confirm the existing Storage bucket is named `private-evidence`, is **not public**, and permits at least 11 MiB per object (the app allows 10 MiB plaintext and adds a small encryption envelope). If MIME restrictions are enabled, permit `application/octet-stream`; the API checks the original PDF/PNG/JPEG/WEBP content before storing it. Keep the service-role key only in Render.
 
-## Dashboard setup steps (for a later, explicitly approved deployment)
+## Dashboard setup steps (approved free-tier rollout)
 
-These are preparation instructions only. No cloud resource should be created or deployed until the project owner explicitly approves deployment.
+The project owner explicitly approved pushing and proceeding with this hosted free-tier deployment on 13 November 2026. These steps remain limited to the existing Vercel and Supabase projects and the single Free Render Web Service described above. Stop if a provider requires a paid tier, paid trial, persistent disk, or payment card. Keep all provider secrets inside the protected provider settings; do not commit or send them in chat.
 
 1. In Vercel, confirm `rsiacdp-frontend` is on the Hobby plan and is used only for personal/non-commercial work. Set Root Directory to `frontend`, production branch to `codex/initial-platform`, and use the generated `.vercel.app` hostname. Do not start a Pro trial or add a paid domain.
 2. In Render, connect `gaurvit06/RSIACDP`, branch `codex/initial-platform`, and use the root `render.yaml` Blueprint. Verify the plan says **Free** and exactly one Web Service will be created before applying. Region is Singapore in the Blueprint and cannot be changed after service creation.
