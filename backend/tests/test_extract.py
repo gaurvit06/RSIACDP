@@ -99,6 +99,8 @@ class ExtractionTests(unittest.TestCase):
     def test_explicit_payment_request_and_requirement_are_extracted(self):
         examples = (
             "Please send a registration fee of INR 500 before onboarding.",
+            "Applicants are asked to pay a training fee before onboarding.",
+            "The recruiter requested payment of a placement fee before the interview.",
             "A security deposit is mandatory before the interview.",
             "The processing fee of INR 500.00 is required.",
         )

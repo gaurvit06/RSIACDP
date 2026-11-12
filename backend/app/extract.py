@@ -33,8 +33,8 @@ FEE_TERM_PATTERN = re.compile(
     re.I,
 )
 FEE_PAYMENT_BEFORE_PATTERN = re.compile(
-    r"\b(?:pay(?:ment)?|send|transfer|deposit|submit|collect(?:ed)?|charge(?:d)?|"
-    r"asked?\s+to\s+pay|requested?\s+payment|must\s+pay|should\s+pay)\b"
+    r"\b(?:pay(?:ment|ing|s)?|paid|send|transfer|deposit|submit|collect(?:ed)?|charge(?:d)?|"
+    r"ask(?:ed)?\s+to\s+pay|request(?:ed)?\s+payment|must\s+pay|should\s+pay)\b"
     r"[^.!?;\r\n]{0,80}$",
     re.I,
 )

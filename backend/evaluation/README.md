@@ -2,9 +2,9 @@
 
 ## Synthetic rehearsal requested by the project owner
 
-From `backend`, run `python -m evaluation.generate_synthetic .test-runtime/synthetic-evaluation-v1` to create 108 fictional cases in a new, ignored directory. The generator refuses an existing output directory. Each simulated chronological split contains 36 cases; campaign identifiers are disjoint across splits. Only reserved `example.invalid` email identifiers are used. The adjacent manifest records the dataset hash, scope and limitations; the provenance file records generator-defined labels and email spans. No predictions or measured timings are fabricated.
+From `backend`, run `python -m evaluation.generate_synthetic .test-runtime/synthetic-evaluation-v1` to create 108 fictional cases in a new directory. The generator refuses an existing output directory. Each simulated chronological split contains 36 cases; campaign identifiers are disjoint across splits. Only reserved `example.invalid` email identifiers are used. The adjacent manifest records the dataset hash, scope and limitations; the provenance file records generator-defined labels and email spans. No predictions or measured timings are fabricated. This v1 data is retained as the historical text-only baseline fixture.
 
-Run `python -m evaluation.baseline_tfidf_logreg .test-runtime/synthetic-evaluation-v1/synthetic-input.jsonl .test-runtime/synthetic-evaluation-v1/tfidf-predictions.jsonl` for an actual baseline rehearsal. Save its stdout as a clearly labelled synthetic-only metrics artifact. These fixtures exercise the evaluation machinery, not real-world generalization: template overlap, simulated dates, email-only coverage and generator-defined labels make them unsuitable as evidence of deployment accuracy. Negative labels refer only to the complete fictional fixture universe. Do not import fictional source allegations into a production corpus. Full-pipeline and no-graph runs still require actual isolated application execution; an LLM/web-search comparison still requires a configured provider and traceable retrieval. This generator does not complete those comparisons.
+Run `python -m evaluation.baseline_tfidf_logreg .test-runtime/synthetic-evaluation-v1/synthetic-input.jsonl .test-runtime/synthetic-evaluation-v1/tfidf-predictions.jsonl` for an actual baseline rehearsal. Save its stdout as a clearly labelled synthetic-only metrics artifact. These fixtures exercise the evaluation machinery, not real-world generalization: template overlap, simulated dates, email-only coverage and generator-defined labels make them unsuitable as evidence of deployment accuracy. Negative labels refer only to the complete fictional fixture universe. Do not import fictional source allegations into a production corpus. The v1 generator alone does not run the full application pipeline; see the v2 isolated pipeline smoke below. An LLM/web-search comparison still requires a configured provider and traceable retrieval.
 
 ### Recorded synthetic-only rehearsal
 
@@ -19,6 +19,33 @@ The generated `synthetic-evaluation-v1` artifact contains 108 cases (36 each in 
 | Per-test-case classifier time | Mean 0.0158 ms; p95 0.0250 ms | TF-IDF transform and logistic prediction only; excludes training, the API, worker, OCR, evidence retrieval, graph linking, and I/O. |
 
 The scorer used 1,000 deterministic bootstrap resamples (seed `20261103`). Entity and campaign F1 intervals were `[0.00, 0.00]`; evidence-support precision had no valid resamples because there were no predicted support claims. The generated records use simulated dates, generator-defined labels, one email identifier type, and fictional `.invalid` addresses. These results show that the text-classifier comparator does not provide the investigation pipeline's extraction, provenance, or campaign-link capabilities; they are not evidence of product performance and must not be presented as a real-world metric.
+
+## Synthetic application-pipeline integration rehearsal v2
+
+The v2 fixture uses 108 generated cases (36 per chronological split), with one unique reserved `.invalid` domain per generated campaign and three repeated email/domain pairs inside that campaign. It avoids the v1 fixture's single shared `example.invalid` host, which could connect unrelated groups through a weak domain-only link. It still uses templates, simulated dates, and generator-defined labels; it is only an integration fixture.
+
+From `backend`, create a new protected output location outside the repository. These commands refuse to overwrite either an existing dataset or an existing run directory:
+
+```powershell
+$evalRoot = Join-Path $env:TEMP "rsaicdp-synthetic-eval-v2-unique"
+$env:RSAICDP_CODE_REVISION = (git rev-parse HEAD).Trim()
+python -m evaluation.generate_synthetic_v2 (Join-Path $evalRoot "dataset")
+python -m evaluation.run_synthetic_pipeline (Join-Path $evalRoot "dataset\synthetic-input.jsonl") (Join-Path $evalRoot "run")
+```
+
+The runner records the optional `RSAICDP_CODE_REVISION` commit and always fingerprints the application/evaluation Python source snapshot. It forces `APP_ENV=testing`, SQLite, local upload storage, no Supabase, no Neo4j, no RDAP, and campaign threshold `40`. It uses the real deterministic extractor, local evidence adapter, findings builder, case-link rule, evaluation exporter and scorer. It creates a temporary base database, clones it for full and no-graph runs, verifies matching case/evidence and corpus snapshot HMACs, writes predictions and metadata, then removes its temporary database files. The full run executes the real PostgreSQL-side case-link algorithm against SQLite, but it does not exercise a live Neo4j projection. Run it in an offline worker image (`--network none`) when practical. Keep the generated outputs under an ACL-restricted directory; predictions contain fixture labels and evidence claims even though the IDs use the reserved `.invalid` namespace.
+
+### Recorded v2 synthetic smoke results
+
+Run on 2026-11-12 with input SHA-256 `67fdfbdabbc5a21f45b1af56d6bb37be825c124ee8e81219608f87a0f38ebe60`; 36 held-out test cases, 72 expected extracted entities, 36 expected campaign pairs, and 18 generated supported claims. The fixed scorer used 1,000 bootstrap resamples (seed `20261103`).
+
+| System | Entity F1 | Campaign pairwise F1 | Evidence support precision / recall | Concern FPR | Mean / p95 processing time |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| TF-IDF + logistic regression | 0.00 | 0.00 | Undefined / 0.00 | 0/18 = 0.00 | 0.0155 / 0.0364 ms |
+| Evidence pipeline without graph linking | 1.00 | 0.00 | 1.00 / 1.00 | 0/18 = 0.00 | 43.711 / 75.605 ms |
+| Full evidence pipeline with campaign linking | 1.00 | 1.00 | 1.00 / 1.00 | 0/18 = 0.00 | 51.654 / 82.462 ms |
+
+The pipeline F1 values are perfect because the generator creates the gold entities, campaign IDs, evidence records, and synthetic evidence-review state from the same fixture rules. They are a tautological integration check, not independent accuracy. The evidence-support test therefore does not establish source truth. The text-only baseline intentionally predicts no entities, campaigns, or supported claims. Pipeline times include persisted worker duration and, for full mode, per-case campaign-link recomputation; TF-IDF time covers its classifier-only per-case inference. None is a production latency estimate. No LLM/web-search run was made because no approved provider and lawful retrieval configuration was supplied. Independent, authorized time-separated annotations are still required for model-performance claims.
 
 Evaluation on independent, properly annotated recruitment-scam cases remains pending. Do not report synthetic or placeholder metrics as product performance. EMSCAD may be used as a separate baseline dataset, but it is not evidence of current performance on Indian recruitment scams.
 
