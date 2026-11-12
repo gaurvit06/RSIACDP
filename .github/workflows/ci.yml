@@ -135,11 +135,14 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
       - name: Scan Neo4j image for fixed high and critical vulnerabilities
+        id: scan_neo4j
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        continue-on-error: true
         with:
           scan-type: image
           image-ref: neo4j:5.26.33-community-trixie
-          format: table
+          format: json
+          output: neo4j-trivy-report.json
           severity: HIGH,CRITICAL
           scanners: vuln
           ignore-unfixed: true
@@ -177,6 +180,16 @@ jobs:
         run: |
           docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT version_num FROM alembic_version"'
           docker compose exec -T worker python -m app.graph_rebuild
+      - name: Upload Neo4j vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neo4j-trivy-report
+          path: neo4j-trivy-report.json
+          if-no-files-found: warn
+      - name: Enforce Neo4j vulnerability scan result
+        if: always() && steps.scan_neo4j.outcome == 'failure'
+        run: exit 1
       - name: Stop the isolated Compose stack
         if: always()
         run: docker compose down -v

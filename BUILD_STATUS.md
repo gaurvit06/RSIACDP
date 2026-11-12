@@ -7360,3 +7360,10 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - GitHub run 43221200266 failed before scheduling jobs: runner.temp was not recognized in the backend job-level environment block (lines 38–40).
 - Moved TEMP/TMP/TMPDIR expressions to the backend test step environment, retaining runner-specific temporary directories where the context is available.
 - This fixes workflow configuration, not an application test failure. Hosted execution must verify the revised workflow; no test pass is claimed.
+
+## 2026-11-12 18:35 — Neo4j hosted scan diagnostics
+
+- Corrected workflow run 43221328967: backend, frontend, operations-scripts, compose-config and web-container passed. Compose E2E stopped only at the Neo4j High/Critical Trivy gate; PostgreSQL scan passed. Subsequent OCR/intake/restore/rebuild steps were skipped.
+- GitHub's public job log API denies log download to this account. Public check-run annotations expose only exit code 1, not the vulnerability list.
+- Updated CI to write a JSON Trivy report, upload it as neo4j-trivy-report artifact, continue the rest of Compose integration checks, then enforce the scanner result after report upload.
+- Exact artifact will reveal current findings without weakening the security gate. Next: inspect artifact from the new CI run; update Neo4j base/image or document a narrowly justified exception, then rerun full CI.
