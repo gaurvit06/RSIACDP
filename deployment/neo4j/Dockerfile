@@ -41,6 +41,29 @@ RUN set -eux; \
     done; \
     rm -rf "$download_dir"
 
+# Neo4j also bundles Jackson 2.22.2 inside parquet-jackson 1.18.1. Upgrade the
+# complete shaded artifact to Apache Parquet 1.18.2, which updates its embedded
+# Jackson copy, and verify the published Maven artifact before installing it.
+RUN set -eux; \
+    download_dir="$(mktemp -d)"; \
+    curl --fail --silent --show-error --location --retry 3 \
+      --output "$download_dir/parquet-jackson-1.18.2.jar" \
+      https://repo.maven.apache.org/maven2/org/apache/parquet/parquet-jackson/1.18.2/parquet-jackson-1.18.2.jar; \
+    echo 'dc20428b547c6376ae7dfa20c30a62c326b7e4ed4915ba5370ae7d7b0859408d  '"$download_dir/parquet-jackson-1.18.2.jar" | sha256sum -c -; \
+    matches="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name 'parquet-jackson-1.18.1.jar' -print 2>/dev/null || true)"; \
+    if [ -n "$matches" ]; then \
+      printf '%s\n' "$matches" | while IFS= read -r old_jar; do \
+        jar_dir="$(dirname "$old_jar")"; \
+        rm -f "$old_jar"; \
+        install -m 0644 "$download_dir/parquet-jackson-1.18.2.jar" "$jar_dir/parquet-jackson-1.18.2.jar"; \
+      done; \
+    fi; \
+    remaining="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name 'parquet-jackson-1.18.1.jar' -print 2>/dev/null || true)"; \
+    fixed="$(find -L / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -name 'parquet-jackson-1.18.2.jar' -print 2>/dev/null || true)"; \
+    test -z "$remaining"; \
+    test -n "$fixed"; \
+    rm -rf "$download_dir"
+
 COPY --chmod=755 deployment/neo4j/render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
 
 # Flatten the patched root filesystem so vulnerable jars and Debian packages

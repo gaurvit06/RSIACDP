@@ -976,3 +976,11 @@ Primary deployment references: [Vercel external rewrites](https://vercel.com/doc
 2. Updated CI to use each finding's `PkgPath` when present, falling back to the result target. The next scan will show whether the report includes a useful path for precise remediation.
 3. The embedded JavaScript passed `node --check`, GitHub Actions YAML parsed, the Dockerfile check and Compose security-wiring script passed, and `git diff --check` passed. A bare local Compose parse without required secrets failed as expected; the repository validation script reran it using synthetic placeholders and passed.
 4. Push this diagnostics-only change and inspect the next CI annotation. Keep the security gate strict; no suppression or false claim of a clean image.
+
+## 9.93 Replace the vulnerable shaded Parquet dependency
+
+1. Hosted run [`43241342196`](https://github.com/gaurvit06/RSIACDP/actions/runs/43241342196) confirmed that the Jackson 2.22.2 components were bundled inside `parquet-jackson-1.18.1.jar`. Frontend/backend checks, Compose configuration, web-container checks, operations scripts, synthetic investigator workflows, encrypted backup/restore, and graph rebuild passed; the only failed step was the strict Neo4j vulnerability gate.
+2. Checked Apache Parquet's issue and official 1.18.2 release. The upstream project documents the 1.18.1 shaded-Jackson problem and the 1.18.2 Jackson update. Replaced the whole Parquet jar instead of editing shaded bytecode. Verified the downloaded Maven Central SHA-1 sidecar, pinned its computed SHA-256 (`dc20428b547c6376ae7dfa20c30a62c326b7e4ed4915ba5370ae7d7b0859408d`), and inspected the artifact metadata showing embedded Jackson core/databind 2.22.4.
+3. Added an image-build guard that replaces every `parquet-jackson-1.18.1.jar`, verifies no old-named jar remains, and fails unless a 1.18.2 jar is present. The next hosted strict Trivy scan and complete runtime/recovery workflow are still required before the Neo4j image is considered deployable.
+
+Apache's [Parquet 1.18.2 release](https://github.com/apache/parquet-java/releases/tag/apache-parquet-1.18.2) includes the Jackson upgrade; its [upstream issue](https://github.com/apache/parquet-java/issues/3857) explains why excluding the shaded module breaks Parquet's write path.
