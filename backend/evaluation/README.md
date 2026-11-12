@@ -41,11 +41,11 @@ Run on 2026-11-12 with input SHA-256 `67fdfbdabbc5a21f45b1af56d6bb37be825c124ee8
 
 | System | Entity F1 | Campaign pairwise F1 | Evidence support precision / recall | Concern FPR | Mean / p95 processing time |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| TF-IDF + logistic regression | 0.00 | 0.00 | Undefined / 0.00 | 0/18 = 0.00 | 0.0155 / 0.0364 ms |
-| Evidence pipeline without graph linking | 1.00 | 0.00 | 1.00 / 1.00 | 0/18 = 0.00 | 43.711 / 75.605 ms |
-| Full evidence pipeline with campaign linking | 1.00 | 1.00 | 1.00 / 1.00 | 0/18 = 0.00 | 51.654 / 82.462 ms |
+| TF-IDF + logistic regression | 0.00 | 0.00 | Undefined / 0.00 | 0/18 = 0.00 | 0.0125 / 0.0177 ms |
+| Evidence pipeline without graph linking | 1.00 | 0.00 | 1.00 / 1.00 | 0/18 = 0.00 | 39.580 / 56.708 ms |
+| Full evidence pipeline with campaign linking | 1.00 | 1.00 | 1.00 / 1.00 | 0/18 = 0.00 | 47.823 / 64.634 ms |
 
-The pipeline F1 values are perfect because the generator creates the gold entities, campaign IDs, evidence records, and synthetic evidence-review state from the same fixture rules. They are a tautological integration check, not independent accuracy. The evidence-support test therefore does not establish source truth. The text-only baseline intentionally predicts no entities, campaigns, or supported claims. Pipeline times include persisted worker duration and, for full mode, per-case campaign-link recomputation; TF-IDF time covers its classifier-only per-case inference. None is a production latency estimate. No LLM/web-search run was made because no approved provider and lawful retrieval configuration was supplied. Independent, authorized time-separated annotations are still required for model-performance claims.
+This run used Git revision `626c000663cabe336365e1fd68dba3c3bef06e32` and application/evaluation source snapshot SHA-256 `d5b460ca3381889b7d96f858c32188c43c9a1a94aba3363ec731ccd4a674bac0`. The pipeline F1 values are perfect because the generator creates the gold entities, campaign IDs, evidence records, and synthetic evidence-review state from the same fixture rules. They are a tautological integration check, not independent accuracy. The evidence-support test therefore does not establish source truth. The text-only baseline intentionally predicts no entities, campaigns, or supported claims. Pipeline times include persisted worker duration and, for full mode, per-case campaign-link recomputation; TF-IDF time covers its classifier-only per-case inference. None is a production latency estimate. No LLM/web-search run was made because no approved provider and lawful retrieval configuration was supplied. Independent, authorized time-separated annotations are still required for model-performance claims.
 
 Evaluation on independent, properly annotated recruitment-scam cases remains pending. Do not report synthetic or placeholder metrics as product performance. EMSCAD may be used as a separate baseline dataset, but it is not evidence of current performance on Indian recruitment scams.
 

@@ -78,7 +78,8 @@ services:
       - key: INITIAL_REVIEWER_CODE
         generateValue: true
       - key: FORWARDED_ALLOW_IPS
-        value: "*"
+        # Keep proxy headers untrusted until the actual Render/Vercel chain is verified.
+        value: 127.0.0.1
 
   - type: worker
     name: rsiacdp-worker

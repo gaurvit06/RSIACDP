@@ -3,9 +3,17 @@ $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $composePath = Join-Path $repoRoot "docker-compose.yml"
 $examplePath = Join-Path $repoRoot ".env.example"
+$renderPath = Join-Path $repoRoot "render.yaml"
 
 if (-not (Test-Path -LiteralPath $composePath -PathType Leaf)) { throw "Compose file is missing: $composePath" }
 if (-not (Test-Path -LiteralPath $examplePath -PathType Leaf)) { throw "Environment example is missing: $examplePath" }
+if (-not (Test-Path -LiteralPath $renderPath -PathType Leaf)) { throw "Render Blueprint is missing: $renderPath" }
+
+$renderBlueprint = Get-Content -LiteralPath $renderPath -Raw
+$renderProxyTrust = [regex]::Match($renderBlueprint, '(?ms)-\s*key:\s*FORWARDED_ALLOW_IPS\s*\r?\n(?:\s*#.*\r?\n)*\s*value:\s*(?<value>[^\r\n]+)')
+if (-not $renderProxyTrust.Success -or $renderProxyTrust.Groups["value"].Value.Trim().Trim('"') -ne "127.0.0.1") {
+    throw "Render must keep Uvicorn forwarded-header trust loopback-only until the hosted proxy chain has been verified; never use a wildcard."
+}
 
 $exampleLines = Get-Content -LiteralPath $examplePath
 if ($exampleLines | Where-Object { $_ -match '^\s*DATABASE_URL\s*=' }) {
