@@ -18,7 +18,10 @@ services:
       retries: 15
 
   neo4j:
-    image: neo4j:5.26.33-community-trixie
+    image: rsaicdp-neo4j:2026.10.2
+    build:
+      context: .
+      dockerfile: deployment/neo4j/Dockerfile
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env before starting Compose}
     volumes:

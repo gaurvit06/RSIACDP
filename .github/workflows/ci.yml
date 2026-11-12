@@ -140,7 +140,7 @@ jobs:
         continue-on-error: true
         with:
           scan-type: image
-          image-ref: neo4j:5.26.33-community-trixie
+          image-ref: rsaicdp-neo4j:2026.10.2
           format: json
           output: neo4j-trivy-report.json
           severity: HIGH,CRITICAL

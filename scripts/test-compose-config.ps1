@@ -47,8 +47,16 @@ try {
     }
     $missingSecretOutput = & docker compose --env-file $emptyEnvPath -f $composePath config --quiet 2>&1
     $missingSecretExit = $LASTEXITCODE
-    if ($missingSecretExit -eq 0 -or ($missingSecretOutput -join "`n") -notmatch "POSTGRES_PASSWORD") {
-        throw "Compose must reject a configuration that omits POSTGRES_PASSWORD. Output: $($missingSecretOutput -join ' ')"
+    $missingSecretText = $missingSecretOutput -join "`n"
+    $reportedRequiredSecret = $false
+    foreach ($requiredSecret in @("POSTGRES_PASSWORD", "NEO4J_PASSWORD", "JWT_SECRET", "UPLOAD_ENCRYPTION_KEY", "INITIAL_INVESTIGATOR_CODE", "INITIAL_REVIEWER_CODE")) {
+        if ($missingSecretText -match [regex]::Escape($requiredSecret)) {
+            $reportedRequiredSecret = $true
+            break
+        }
+    }
+    if ($missingSecretExit -eq 0 -or -not $reportedRequiredSecret) {
+        throw "Compose must reject a configuration that omits required application secrets."
     }
     foreach ($name in $probeValues.Keys) {
         [System.Environment]::SetEnvironmentVariable($name, $probeValues[$name], "Process")
@@ -83,6 +91,10 @@ try {
         -not $neo4jHealthCommand.Contains('$$NEO4J_AUTH') -or
         -not $neo4jHealthCommand.Contains('$${auth#*/}')) {
         throw "Neo4j health check must derive its login from the configured NEO4J_AUTH credentials."
+    }
+    if ($config.services.neo4j.image -ne "rsaicdp-neo4j:2026.10.2" -or
+        $config.services.neo4j.build.dockerfile -ne "deployment/neo4j/Dockerfile") {
+        throw "Compose and hosted Render must use the same versioned Neo4j image definition."
     }
     $expectedThrottleSettings = @{
         CORRECTION_MAX_REQUESTS = "7"

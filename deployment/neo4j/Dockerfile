@@ -1,4 +1,4 @@
-FROM neo4j:5.26.33-community-trixie
+FROM neo4j:2026.10.2-trixie
 USER root
 COPY --chmod=755 deployment/neo4j/render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
 ENTRYPOINT ["tini", "-g", "--", "/usr/local/bin/render-entrypoint.sh"]

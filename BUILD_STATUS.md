@@ -7406,3 +7406,34 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - `./scripts/test-compose-config.ps1`
 - Run the backend unit and API/proxy suites with `python run_ci_tests.py` in an isolated worker image, `APP_ENV=testing`, separate temporary SQLite/upload paths, no upload-encryption key, and empty Neo4j URI/host.
 - After push, query `https://api.github.com/repos/gaurvit06/RSIACDP/actions/runs?per_page=3` and inspect the new run's jobs/annotations.
+
+## 2026-11-12 19:26 — Hosted CI results and Neo4j security remediation
+
+### Hosted run `43230213205` (`c091269`)
+
+- Backend, frontend, operations-scripts, and web-container jobs passed.
+- The Compose configuration job failed at `scripts/test-compose-config.ps1` line 51. The assertion incorrectly required Docker Compose to report `POSTGRES_PASSWORD` first when multiple required secrets were unset. This is an error-order assumption, not an application failure. Updated it to accept any required-secret diagnostic; separate checks still test every secret individually. The revised script passes locally.
+- The Compose E2E job passed PostgreSQL, Neo4j and Caddy image scans at the step level, OCR/PDF processing, investigator intake, processing, campaign/graph linking, reports, corrections, encrypted backup/restore, and PostgreSQL-to-Neo4j rebuild. Final scan enforcement failed for six High findings in Neo4j 5.26.33: jackson-core/databind 2.22.2 and Debian zlib1g 1:1.3.dfsg+really1.3.1-1+b1. The new annotation diagnostic exposed exact packages and fixed versions.
+
+### Remediation prepared (not yet committed/pushed)
+
+- Switched the Neo4j base to official Community image `2026.10.2-trixie`; Compose and Render now build/use the same custom `rsaicdp-neo4j:2026.10.2` image so CI scans the actual hosted image definition, including its password wrapper.
+- Updated the custom entrypoint to preserve Compose's `NEO4J_AUTH` mode and to construct it from Render's generated `NEO4J_PASSWORD` when deployed. Added weekly Dependabot coverage for `/deployment/neo4j` and updated version/upgrade documentation.
+- Added a Compose config assertion that Compose uses the same Neo4j Dockerfile as Render. Changed the missing-secret assertion to be order-independent.
+- Neo4j's official 2026.10.2 release notes mention bundled dependency fixes. The current Trivy scan and runtime checks on the new image are still pending; the release note is not treated as scan proof.
+
+### Checks after the proposed remediation
+
+- `scripts/test-compose-config.ps1`: passed, including the shared Neo4j image build assertion.
+- Vercel JSON, Render Blueprint, GitHub Actions YAML, Dependabot YAML and dynamic private-host references: parsed/asserted successfully using PyYAML/JSON in the backend container.
+- `bash -n deployment/neo4j/render-entrypoint.sh`: passed.
+- Searched active deployment files for stale Neo4j 5.26.33 image references: none found.
+- `git diff --check`: passed.
+- The 229-unit/15-API-flow/2-proxy backend pass applies to commit `c091269`; backend implementation is unchanged in this pending remediation. Two optional PostgreSQL-only unit tests were skipped.
+
+### Next steps
+
+1. Commit and push the order-independent CI guard and Neo4j 2026.10.2 update to `codex/initial-platform`.
+2. Inspect the new hosted build, runtime/E2E, and Trivy results. If the new image has any remaining fixed High/Critical findings, remediate them without suppressing the strict gate.
+3. Update `BUILD_STATUS.md` with the hosted results and exact next actions.
+4. Cloud provider setup, production provider-backed uploads, deployed recovery checks, browser/accessibility review, and authorized real-world evaluation remain incomplete.
