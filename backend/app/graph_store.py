@@ -7,13 +7,13 @@ from .privacy import mask_identifier, redact_source_ref
 
 
 def configured() -> bool:
-    return bool(settings.neo4j_uri and settings.neo4j_user and settings.neo4j_password)
+    return bool(settings.effective_neo4j_uri and settings.neo4j_user and settings.effective_neo4j_password)
 
 
 def _driver():
     if not configured():
         raise RuntimeError("Neo4j is not configured")
-    return GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password), connection_timeout=5)
+    return GraphDatabase.driver(settings.effective_neo4j_uri, auth=(settings.neo4j_user, settings.effective_neo4j_password), connection_timeout=5)
 
 
 def display_identifier(entity_type: str, value: str) -> str:

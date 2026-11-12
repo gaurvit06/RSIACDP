@@ -1,0 +1,4 @@
+**
+!deployment/
+!deployment/neo4j/
+!deployment/neo4j/render-entrypoint.sh

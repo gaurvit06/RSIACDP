@@ -149,6 +149,11 @@ try {
 
     Write-Output "Compose configuration passed: database URLs, upload encryption key wiring, Neo4j authenticated health, correction throttles, proxy trust, upload limits, web health, same-origin routes, browser headers, and private Docker build contexts are configured."
 }
+catch {
+    $line = $_.InvocationInfo.ScriptLineNumber
+    Write-Output "::error title=Compose config check failed::An assertion failed at scripts/test-compose-config.ps1 line $line."
+    throw
+}
 finally {
     if ($emptyEnvPath -and (Test-Path -LiteralPath $emptyEnvPath)) {
         Remove-Item -LiteralPath $emptyEnvPath -Force

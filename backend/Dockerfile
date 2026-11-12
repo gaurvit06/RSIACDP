@@ -14,4 +14,4 @@ RUN groupadd --system casework && useradd --system --gid casework --home-dir /ap
     && mkdir -p /app/private_uploads && chown -R casework:casework /app && chmod 700 /app/private_uploads
 USER casework
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-127.0.0.1}"]

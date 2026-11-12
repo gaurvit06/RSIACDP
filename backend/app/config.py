@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 from sqlalchemy.engine import make_url
@@ -13,6 +14,10 @@ class Settings:
     token_minutes: int = int(os.getenv("ACCESS_TOKEN_MINUTES", "60"))
     upload_dir: Path = Path(os.getenv("UPLOAD_DIR", "./uploads")).resolve()
     upload_encryption_key: str = os.getenv("UPLOAD_ENCRYPTION_KEY", "")
+    upload_storage_backend: str = os.getenv("UPLOAD_STORAGE_BACKEND", "local").strip().lower()
+    supabase_url: str = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_service_role_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    supabase_storage_bucket: str = os.getenv("SUPABASE_STORAGE_BUCKET", "private-evidence")
     max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_BYTES", "10485760"))
     retention_days: int = int(os.getenv("DATA_RETENTION_DAYS", "180"))
     login_max_attempts: int = int(os.getenv("LOGIN_MAX_ATTEMPTS", "8"))
@@ -33,8 +38,24 @@ class Settings:
     initial_reviewer_code: str = os.getenv("INITIAL_REVIEWER_CODE", "")
     campaign_link_threshold: int = int(os.getenv("CAMPAIGN_LINK_THRESHOLD", "40"))
     neo4j_uri: str = os.getenv("NEO4J_URI", "")
+    neo4j_host: str = os.getenv("NEO4J_HOST", "").strip()
     neo4j_user: str = os.getenv("NEO4J_USER", "neo4j")
     neo4j_password: str = os.getenv("NEO4J_PASSWORD", "")
+    neo4j_password_slash_safe: bool = os.getenv("NEO4J_PASSWORD_SLASH_SAFE", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+    @property
+    def effective_neo4j_uri(self) -> str:
+        # Render supplies the private service's generated hostname through
+        # fromService; local Compose continues to use its explicit NEO4J_URI.
+        if self.neo4j_uri:
+            return self.neo4j_uri
+        return f"bolt://{self.neo4j_host}:7687" if self.neo4j_host else ""
+
+    @property
+    def effective_neo4j_password(self) -> str:
+        # Neo4j's Docker image reserves '/' in NEO4J_AUTH; Render generates
+        # base64 secrets and enables the same mapping in its entrypoint.
+        return self.neo4j_password.replace("/", "_") if self.neo4j_password_slash_safe else self.neo4j_password
 
 
 def validate_correction_throttle_settings(config: Settings) -> None:
@@ -83,6 +104,25 @@ def validate_upload_encryption(config: Settings) -> None:
         raise RuntimeError("UPLOAD_ENCRYPTION_KEY must be canonical base64 for exactly 32 bytes")
     if key is None:
         raise RuntimeError("Set UPLOAD_ENCRYPTION_KEY to a private base64-encoded 32-byte key before starting API or worker")
+
+
+def validate_upload_storage(config: Settings) -> None:
+    """Fail startup on unsupported or incomplete shared private-storage configuration."""
+    if config.upload_storage_backend == "local":
+        return
+    if config.upload_storage_backend != "supabase":
+        raise RuntimeError("UPLOAD_STORAGE_BACKEND must be either local or supabase")
+    try:
+        parsed = urlsplit(config.supabase_url)
+        _ = parsed.port
+    except ValueError:
+        raise RuntimeError("SUPABASE_URL must be a valid HTTPS project origin")
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
+        raise RuntimeError("SUPABASE_URL must be a valid HTTPS project origin")
+    if not config.supabase_service_role_key or len(config.supabase_service_role_key) < 20:
+        raise RuntimeError("Set SUPABASE_SERVICE_ROLE_KEY in the API and worker secret stores")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]", config.supabase_storage_bucket):
+        raise RuntimeError("SUPABASE_STORAGE_BUCKET must be a valid bucket name")
 
 
 def validate_web_origin(config: Settings) -> None:

@@ -6,18 +6,18 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from sqlalchemy import select, or_, and_, delete
 from sqlalchemy.orm import Session
 from .db import SessionLocal
 from .config import settings
-from .config import validate_database_url, validate_upload_encryption
+from .config import validate_database_url, validate_upload_encryption, validate_upload_storage
 from .models import Case, Entity, Evidence, ProcessingJob, AuditEvent, SourceRecord, CorrectionRequest, LoginThrottle, GraphProjectionOutbox, PasswordResetToken
 from .extract import extract
 from .source_adapters import LocalEvidenceCorpusAdapter, RdapDomainAdapter
 from .findings import rebuild_system_findings
 from .graph_outbox import enqueue_graph_sync, process_graph_projection_once
-from .private_storage import decode_upload_encryption_key, ensure_private_upload_dir, is_private_upload_name, read_private_upload
+from .private_storage import decode_upload_encryption_key, is_private_upload_name
+from .upload_storage import delete_upload, ensure_upload_storage, list_uploads, load_upload
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("case-worker")
@@ -92,17 +92,10 @@ def read_uploaded_text(evidence: Evidence) -> ExtractedDocument:
     stored_name = details.get("stored_name")
     if not is_private_upload_name(stored_name):
         raise ValueError("Upload reference is invalid")
-    path = settings.upload_dir / stored_name
-    if path.is_symlink() or not path.is_file():
-        raise FileNotFoundError("Private upload is missing from storage")
     expected_sha256 = details.get("sha256")
     if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
         raise ValueError("Private upload integrity reference is invalid")
-    upload_bytes = read_private_upload(
-        path,
-        settings.max_upload_bytes,
-        decode_upload_encryption_key(settings.upload_encryption_key),
-    )
+    upload_bytes = load_upload(stored_name, settings.max_upload_bytes, decode_upload_encryption_key(settings.upload_encryption_key))
     actual_sha256 = hashlib.sha256(upload_bytes).hexdigest()
     if not hmac.compare_digest(actual_sha256, expected_sha256):
         raise ValueError("Private upload integrity check failed")
@@ -243,7 +236,7 @@ def purge_expired_records(now: datetime | None = None) -> int:
     """Purge expired cases/corpus entries, then remove their private files by opaque name."""
     now = now or datetime.now(timezone.utc)
     cutoff = now - timedelta(days=settings.retention_days)
-    ensure_private_upload_dir(settings.upload_dir)
+    ensure_upload_storage()
     expired_uploads: set[str] = set()
     active_uploads: set[str] = set()
     deleted_cases = 0
@@ -273,26 +266,22 @@ def purge_expired_records(now: datetime | None = None) -> int:
                 stored_name = (details or {}).get("stored_name")
                 if is_private_upload_name(stored_name):
                     active_uploads.add(stored_name)
-    for stored_name in expired_uploads - active_uploads:
-        try:
-            (settings.upload_dir / stored_name).unlink(missing_ok=True)
-        except OSError as exc:
-            # Filesystem exception strings can contain host paths. Keep logs
-            # useful for operators without copying path data into log sinks.
-            log.warning("Could not remove expired private upload (error=%s)", type(exc).__name__)
-    # Recover files left behind if a prior database delete committed before filesystem cleanup.
-    for path in settings.upload_dir.iterdir():
-        try:
-            if is_private_upload_name(path.name) and path.name not in active_uploads and path.is_file() and datetime.fromtimestamp(path.stat().st_mtime, timezone.utc) < cutoff:
-                path.unlink(missing_ok=True)
-        except OSError as exc:
-            log.warning("Could not remove expired orphan upload (error=%s)", type(exc).__name__)
+    # Recover remote objects left behind if a prior database delete committed
+    # before storage cleanup, and apply the same age-based retention rule.
+    for stored_name, created_at in list_uploads():
+        if stored_name not in active_uploads and (stored_name in expired_uploads or created_at < cutoff):
+            try:
+                delete_upload(stored_name)
+            except Exception as exc:
+                # Storage errors may contain service URLs or object paths.
+                log.warning("Could not remove expired private upload (error=%s)", type(exc).__name__)
     return deleted_cases
 
 
 def main():
     validate_database_url(settings)
     validate_upload_encryption(settings)
+    validate_upload_storage(settings)
     log.info("Case processing worker started")
     last_retention = 0.0
     retention_interval = 24 * 60 * 60

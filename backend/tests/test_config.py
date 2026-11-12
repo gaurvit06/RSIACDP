@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import base64
 import unittest
 
-from app.config import MAX_UPLOAD_BYTES_LIMIT, validate_access_token_settings, validate_bootstrap_codes, validate_correction_throttle_settings, validate_database_url, validate_upload_encryption, validate_upload_size, validate_web_origin
+from app.config import MAX_UPLOAD_BYTES_LIMIT, Settings, validate_access_token_settings, validate_bootstrap_codes, validate_correction_throttle_settings, validate_database_url, validate_upload_encryption, validate_upload_size, validate_web_origin
 
 
 class CorrectionThrottleConfigurationTests(unittest.TestCase):
@@ -123,6 +123,22 @@ class DatabaseConfigurationTests(unittest.TestCase):
             with self.subTest(database_url=database_url), self.assertRaisesRegex(RuntimeError, expected) as caught:
                 validate_database_url(SimpleNamespace(database_url=database_url, app_environment=environment))
             self.assertNotIn("secret", str(caught.exception))
+
+
+class Neo4jConfigurationTests(unittest.TestCase):
+    def test_render_private_hostname_builds_bolt_uri(self):
+        config = Settings()
+        config.neo4j_uri = ""
+        config.neo4j_host = "rsiacdp-neo4j-ab12"
+
+        self.assertEqual(config.effective_neo4j_uri, "bolt://rsiacdp-neo4j-ab12:7687")
+
+    def test_explicit_local_uri_takes_precedence(self):
+        config = Settings()
+        config.neo4j_uri = "bolt://neo4j:7687"
+        config.neo4j_host = "render-generated-host"
+
+        self.assertEqual(config.effective_neo4j_uri, "bolt://neo4j:7687")
 
 
 if __name__ == "__main__":

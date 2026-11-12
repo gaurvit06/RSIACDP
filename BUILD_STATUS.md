@@ -7367,3 +7367,42 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - GitHub's public job log API denies log download to this account. Public check-run annotations expose only exit code 1, not the vulnerability list.
 - Updated CI to write a JSON Trivy report, upload it as neo4j-trivy-report artifact, continue the rest of Compose integration checks, then enforce the scanner result after report upload.
 - Exact artifact will reveal current findings without weakening the security gate. Next: inspect artifact from the new CI run; update Neo4j base/image or document a narrowly justified exception, then rerun full CI.
+
+## 2026-11-12 19:12 — Vercel/Render/Supabase deployment and hosted-CI diagnostics
+
+### Completed
+
+- Implemented the optional Supabase private Storage adapter for the API and worker. Uploads use application AES-GCM encryption, opaque filenames, bounded downloads/listing, authenticated Storage API requests, no redirects, and Storage API deletion. Local private-disk storage remains the default for Compose.
+- Added Vercel static hosting configuration and same-origin `/api/*` rewrite; frontend auth requests now send cookies through that rewrite.
+- Added the Render Blueprint for the API, worker and private Neo4j service, including generated secrets, migration/health settings, and private persistent Neo4j data. Added a Render Neo4j image wrapper for the generated auth secret format.
+- Reviewed Render's current Blueprint/private-network reference. Fixed the Neo4j host wiring to use Render `fromService` rather than a guessed DNS name; API and worker now construct `bolt://<generated-private-host>:7687`, while explicit local `NEO4J_URI` retains priority. Added regression coverage for both paths.
+- Updated README and engineering walkthrough with provider setup, bucket policy, credentials, expected costs and provider limitations. No credentials were added to the repository.
+- Hosted GitHub run `43224083243` on `b3ec799` failed in the Compose configuration job and at the Neo4j High/Critical vulnerability gate. Backend, frontend, operations-script and web-container jobs passed. Compose E2E reached backup/restore and graph rebuild, then failed final enforcement for Neo4j findings. The hosted artifact cannot be downloaded without GitHub authentication. The unpushed workflow now emits vulnerability and Compose-assertion diagnostics as check annotations; a fresh hosted run is pending publication.
+
+### Checks run
+
+- Backend CI harness after the dynamic Neo4j host change: **229 unit tests passed, 2 optional PostgreSQL-only tests skipped; 15 isolated API flow tests passed; 2 proxy-header tests passed**.
+- Focused configuration suite: **12 tests passed**.
+- Supabase Storage adapter tests: **3 passed** as part of the 229-test unit harness.
+- `scripts/test-compose-config.ps1`: passed.
+- Render Blueprint, GitHub Actions YAML, Vercel JSON and dynamic Neo4j service references: parsed and asserted successfully with PyYAML/JSON in the backend container.
+- `git diff --check`: passed.
+- Earlier in this stage, the fresh isolated five-service Compose application passed full intake-to-report, correction, graph, OCR/PDF and Neo4j outage/recovery workflows; encrypted backup/restore also passed with one private upload and graph rebuild. That E2E run was before the final dynamic-host refactor; local Compose still uses the same explicit URI path now covered by the unit test.
+- Frontend build and 24 redaction tests passed earlier in this stage; the frontend code has not changed since those checks.
+
+### Remaining and next steps
+
+1. Commit and push this reviewed deployment/configuration change to `codex/initial-platform` (explicitly authorized by the user), then inspect the newly triggered GitHub Actions run and fix any surfaced Compose/Neo4j findings without weakening the scan gate.
+2. Resolve the Neo4j High/Critical image findings from hosted annotations or a scan artifact obtainable through authorized GitHub access.
+3. Configure operator-owned Supabase, Render and Vercel projects and secrets in their dashboards. No cloud account or provider credentials were supplied, so no hosted deployment or cloud upload has been run.
+4. Verify live cookies/CSRF, consented upload, encrypted private object access, worker processing, retention, reports, correction, graph and a provider backup/restore.
+5. Complete browser/accessibility review under the existing browser-origin approval gate and run evaluation on authorized, time-separated annotations. Synthetic generated data is not real-world validation.
+
+### Resume commands
+
+- `Get-Content BUILD_STATUS.md -Tail 90`
+- `git status --short`
+- `git diff --check`
+- `./scripts/test-compose-config.ps1`
+- Run the backend unit and API/proxy suites with `python run_ci_tests.py` in an isolated worker image, `APP_ENV=testing`, separate temporary SQLite/upload paths, no upload-encryption key, and empty Neo4j URI/host.
+- After push, query `https://api.github.com/repos/gaurvit06/RSIACDP/actions/runs?per_page=3` and inspect the new run's jobs/annotations.

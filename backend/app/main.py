@@ -16,7 +16,7 @@ from alembic.config import Config
 from sqlalchemy import select, or_, and_, delete, update, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from .config import settings, validate_access_token_settings, validate_bootstrap_codes, validate_correction_throttle_settings, validate_database_url, validate_upload_encryption, validate_upload_size, validate_web_origin
+from .config import settings, validate_access_token_settings, validate_bootstrap_codes, validate_correction_throttle_settings, validate_database_url, validate_upload_encryption, validate_upload_size, validate_upload_storage, validate_web_origin
 from .db import get_db, SessionLocal
 from .models import User, Case, Entity, Evidence, AuditEvent, CaseLink, ProcessingJob, SourceRecord, CorrectionRequest, HumanDisposition, SystemFinding, LoginThrottle, GraphProjectionOutbox, PasswordResetToken, AccountProvisioningGate
 from .schemas import RegisterRequest, LoginRequest, AccountStatusRequest, PasswordResetIssueRequest, PasswordResetConsumeRequest, CaseCreate, ReviewRequest, EvidenceReviewRequest, DispositionRequest, DispositionReviewRequest, SourceRecordCreate, SourceRecordRetire, CorrectionCreate, CorrectionReview, CorrectionStatusRequest, CorrectionApply
@@ -28,7 +28,8 @@ from .file_validation import content_matches_type
 from .graph_outbox import enqueue_graph_sync
 from . import graph_store
 from .middleware import ApiNoStoreMiddleware, RequestBodyLimitMiddleware
-from .private_storage import decode_upload_encryption_key, ensure_private_upload_dir, write_private_upload
+from .private_storage import decode_upload_encryption_key
+from .upload_storage import delete_upload, ensure_upload_storage, store_upload
 from .privacy import mask_identifier, redact_data, redact_source_ref, redact_text
 from .public_status import public_correction_status
 from .reporting import render_markdown_report
@@ -59,12 +60,13 @@ async def lifespan(app: FastAPI):
     validate_bootstrap_codes(settings)
     if "change-this-local-password" in settings.database_url:
         raise RuntimeError("Set a non-default PostgreSQL password in DATABASE_URL before starting the API")
-    if settings.neo4j_uri and (not settings.neo4j_password or settings.neo4j_password.startswith("change-this")):
+    if settings.effective_neo4j_uri and (not settings.effective_neo4j_password or settings.effective_neo4j_password.startswith("change-this")):
         raise RuntimeError("Set a non-default NEO4J_PASSWORD before connecting to Neo4j")
     if settings.retention_days < 1:
         raise RuntimeError("DATA_RETENTION_DAYS must be a positive integer")
     validate_upload_size(settings)
     validate_upload_encryption(settings)
+    validate_upload_storage(settings)
     if not 1 <= settings.campaign_link_threshold <= 100:
         raise RuntimeError("CAMPAIGN_LINK_THRESHOLD must be between 1 and 100")
     if settings.login_max_attempts < 1 or settings.login_window_seconds < 1 or settings.login_lockout_seconds < 1:
@@ -76,7 +78,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("PASSWORD_RESET_TOKEN_MINUTES must be a positive integer")
     if settings.rdap_timeout_seconds <= 0 or settings.rdap_max_response_bytes < 1024:
         raise RuntimeError("RDAP timeout must be positive and RDAP response limit must be at least 1024 bytes")
-    ensure_private_upload_dir(settings.upload_dir)
+    ensure_upload_storage()
     migration_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(migration_config, "head")
     yield
@@ -693,12 +695,11 @@ def persist_uploaded_case(
     """Store a private upload and commit its case atomically with compensation on failure."""
     suffix = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "application/pdf": ".pdf"}[media_type]
     stored_name = secrets.token_hex(24) + suffix
-    ensure_private_upload_dir(settings.upload_dir)
-    target = settings.upload_dir / stored_name
+    ensure_upload_storage()
     encryption_key = decode_upload_encryption_key(settings.upload_encryption_key)
     if encryption_key is None and settings.app_environment != "testing":
         raise RuntimeError("Set UPLOAD_ENCRYPTION_KEY before storing uploaded files")
-    write_private_upload(target, content, encryption_key)
+    store_upload(stored_name, content, encryption_key)
     digest = hashlib.sha256(content).hexdigest()
     case = Case(case_ref=f"RC-{secrets.token_hex(4).upper()}", title=title, input_kind="file", submitted_text=None, status="queued", consent_version=current_consent_version(), external_source_consent=rdap_consent, consented_at=datetime.now(timezone.utc), created_by=user.id)
     try:
@@ -707,7 +708,7 @@ def persist_uploaded_case(
         storage_excerpt = (
             "File contents are application-encrypted in private storage and are not served through a public URL."
             if encryption_key is not None
-            else "Test-only mode permits unencrypted synthetic fixtures; this file is stored in the private application directory and is not served through a public URL."
+            else "Test-only mode permits unencrypted synthetic fixtures; this file remains in private storage and is not served through a public URL."
         )
         db.add(Evidence(case_id=case.id, source_name="Private upload", source_type="uploaded_file", source_ref=f"sha256:{digest}", claim="Uploaded file received; OCR/text extraction is pending", outcome="not_checked", excerpt=storage_excerpt, authority="user_submitted", details={"sha256": digest, "stored_name": stored_name, "media_type": media_type, "size": len(content)}))
         db.add(ProcessingJob(case_id=case.id))
@@ -716,8 +717,8 @@ def persist_uploaded_case(
     except Exception:
         db.rollback()
         try:
-            target.unlink(missing_ok=True)
-        except OSError as cleanup_error:
+            delete_upload(stored_name)
+        except Exception as cleanup_error:
             upload_log.warning("Could not remove uncommitted private upload (error=%s)", type(cleanup_error).__name__)
         raise
     db.refresh(case)

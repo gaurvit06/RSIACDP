@@ -21,7 +21,7 @@ async function request(path: string, token: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (!['GET', 'HEAD', 'OPTIONS'].includes((init.method || 'GET').toUpperCase()) && token) headers.set('X-CSRF-Token', token);
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API}${path}`, { ...init, headers, credentials: 'same-origin' });
+  const response = await fetch(`${API}${path}`, { ...init, headers, credentials: 'include' });
   if (shouldExpireSession(response.status, path)) window.dispatchEvent(new Event('casework:unauthorized'));
   if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(apiErrorMessage(data.detail, `Request failed (${response.status})`)); }
   return response;
@@ -130,7 +130,7 @@ export default function App() {
   }
   useEffect(() => {
     let stopped = false;
-    fetch(`${API}/api/auth/me`, { credentials: 'same-origin' }).then(async response => {
+    fetch(`${API}/api/auth/me`, { credentials: 'include' }).then(async response => {
       if (response.status === 401) return null;
       const data = await response.json();
       if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not restore the session'));
@@ -223,7 +223,7 @@ export default function App() {
   async function login(email: string, password: string, create: boolean, setupCode: string) {
     setBusy(true); setError('');
     try {
-      const response = await fetch(`${API}/api/auth/${create ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ email, password, setup_code: setupCode, session_mode: 'cookie' }) });
+      const response = await fetch(`${API}/api/auth/${create ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password, setup_code: setupCode, session_mode: 'cookie' }) });
       const data = await response.json(); if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not sign in'));
       setToken(data.csrf_token || ''); setUser(data.user); await loadCases(data.csrf_token || '');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }

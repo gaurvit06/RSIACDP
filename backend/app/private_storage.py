@@ -53,17 +53,7 @@ def write_private_upload(
     """Create an exclusive private upload, encrypting and authenticating bytes when keyed."""
     if not is_private_upload_name(path.name):
         raise ValueError("Upload filename is invalid")
-    stored_content = content
-    if encryption_key is not None:
-        if len(encryption_key) != UPLOAD_KEY_BYTES:
-            raise ValueError("Upload encryption key must contain 32 bytes")
-        nonce = secrets.token_bytes(UPLOAD_NONCE_BYTES)
-        bound_filename = associated_filename or path.name
-        if not is_private_upload_name(bound_filename):
-            raise ValueError("Upload associated filename is invalid")
-        associated_data = UPLOAD_MAGIC + bound_filename.encode("ascii")
-        ciphertext = AESGCM(encryption_key).encrypt(nonce, content, associated_data)
-        stored_content = UPLOAD_MAGIC + nonce + ciphertext
+    stored_content = encrypt_private_upload_bytes(path.name, content, encryption_key, associated_filename)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_BINARY"):
         flags |= os.O_BINARY
@@ -95,11 +85,47 @@ def read_private_upload(
         raise ValueError("Upload filename is invalid")
     if maximum_plaintext_bytes < 0:
         raise ValueError("Upload read limit must not be negative")
-    maximum_stored_bytes = maximum_plaintext_bytes
-    if encryption_key is not None:
-        maximum_stored_bytes += len(UPLOAD_MAGIC) + UPLOAD_NONCE_BYTES + UPLOAD_TAG_BYTES
+    maximum_stored_bytes = maximum_plaintext_bytes + (len(UPLOAD_MAGIC) + UPLOAD_NONCE_BYTES + UPLOAD_TAG_BYTES if encryption_key is not None else 0)
     with path.open("rb") as source:
         stored_content = source.read(maximum_stored_bytes + 1)
+    return decrypt_private_upload_bytes(path.name, stored_content, maximum_plaintext_bytes, encryption_key, associated_filename)
+
+
+def encrypt_private_upload_bytes(
+    filename: str,
+    content: bytes,
+    encryption_key: bytes | None = None,
+    associated_filename: str | None = None,
+) -> bytes:
+    """Encrypt bytes with the existing authenticated upload envelope for any private store."""
+    if not is_private_upload_name(filename):
+        raise ValueError("Upload filename is invalid")
+    if encryption_key is None:
+        return content
+    if len(encryption_key) != UPLOAD_KEY_BYTES:
+        raise ValueError("Upload encryption key must contain 32 bytes")
+    nonce = secrets.token_bytes(UPLOAD_NONCE_BYTES)
+    bound_filename = associated_filename or filename
+    if not is_private_upload_name(bound_filename):
+        raise ValueError("Upload associated filename is invalid")
+    associated_data = UPLOAD_MAGIC + bound_filename.encode("ascii")
+    ciphertext = AESGCM(encryption_key).encrypt(nonce, content, associated_data)
+    return UPLOAD_MAGIC + nonce + ciphertext
+
+
+def decrypt_private_upload_bytes(
+    filename: str,
+    stored_content: bytes,
+    maximum_plaintext_bytes: int,
+    encryption_key: bytes | None = None,
+    associated_filename: str | None = None,
+) -> bytes:
+    """Bound and authenticate stored bytes before exposing plaintext to parsers."""
+    if not is_private_upload_name(filename):
+        raise ValueError("Upload filename is invalid")
+    if maximum_plaintext_bytes < 0:
+        raise ValueError("Upload read limit must not be negative")
+    maximum_stored_bytes = maximum_plaintext_bytes + (len(UPLOAD_MAGIC) + UPLOAD_NONCE_BYTES + UPLOAD_TAG_BYTES if encryption_key is not None else 0)
     if len(stored_content) > maximum_stored_bytes:
         raise ValueError("Private upload exceeds the configured size limit")
     if stored_content.startswith(UPLOAD_MAGIC):
@@ -110,7 +136,7 @@ def read_private_upload(
         nonce_start = len(UPLOAD_MAGIC)
         nonce = stored_content[nonce_start:nonce_start + UPLOAD_NONCE_BYTES]
         ciphertext = stored_content[nonce_start + UPLOAD_NONCE_BYTES:]
-        bound_filename = associated_filename or path.name
+        bound_filename = associated_filename or filename
         if not is_private_upload_name(bound_filename):
             raise ValueError("Upload associated filename is invalid")
         associated_data = UPLOAD_MAGIC + bound_filename.encode("ascii")

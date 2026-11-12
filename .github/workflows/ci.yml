@@ -187,6 +187,25 @@ jobs:
           name: neo4j-trivy-report
           path: neo4j-trivy-report.json
           if-no-files-found: warn
+      - name: Publish Neo4j findings as check annotations
+        if: always() && steps.scan_neo4j.outcome == 'failure' && hashFiles('neo4j-trivy-report.json') != ''
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('neo4j-trivy-report.json', 'utf8'));
+          const findings = (report.Results || []).flatMap((result) =>
+            (result.Vulnerabilities || [])
+              .filter((item) => ['HIGH', 'CRITICAL'].includes(item.Severity))
+              .map((item) => ({ target: result.Target, ...item })),
+          );
+          for (const item of findings) {
+            const title = 'Neo4j ' + item.Severity + ' ' + item.VulnerabilityID;
+            const message = item.PkgName + '@' + item.InstalledVersion + ' in ' + item.target + '; fixed version: ' + (item.FixedVersion || 'none listed');
+            process.stdout.write('::error title=' + title + '::' + message + '\n');
+          }
+          process.stdout.write('Neo4j vulnerability gate reported ' + findings.length + ' High/Critical findings.\n');
+          NODE
       - name: Enforce Neo4j vulnerability scan result
         if: always() && steps.scan_neo4j.outcome == 'failure'
         run: exit 1
