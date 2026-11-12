@@ -967,4 +967,12 @@ Primary deployment references: [Vercel external rewrites](https://vercel.com/doc
 
 1. Hosted run [`43238338368`](https://github.com/gaurvit06/RSIACDP/actions/runs/43238338368) built the image and ran Trivy, which still found Jackson core and databind 2.22.2 (four High findings) even though a 2.22.3 core JAR existed under Neo4j home. The Debian zlib findings were no longer reported. Public run annotations do not show all E2E step logs, so this entry does not claim the entire workflow passed.
 2. Expanded the Dockerfile replacement to scan the complete real root filesystem, following symlinks and pruning virtual `/proc`, `/sys`, `/dev`, and `/run` trees. It replaces all old copies it finds and verifies no 2.22.2 filename remains before creating the flattened image.
-3. Locally ran Docker's Dockerfile check, Compose configuration validation, the Compose security-wiring script, and `git diff --check`; all passed. No full local image build or Trivy run was possible under the disk limit. Push the patch and use hosted Trivy plus the complete application/recovery checks as the acceptance gate.
+3. The next hosted run [`43239638247`](https://github.com/gaurvit06/RSIACDP/actions/runs/43239638247) still found the same Jackson 2.22.2 components after the filename-based global replacement. This indicates Trivy's Java metadata may refer to a nested artifact or archive rather than a standalone JAR named with the vulnerable version.
+4. Locally ran Docker's Dockerfile check, Compose configuration validation, the Compose security-wiring script, and `git diff --check`; all passed. No full local image build or Trivy run was possible under the disk limit. Push the package-path annotation and use the next hosted report to identify the containing archive before modifying binaries.
+
+## 9.92 Expose Trivy's Java package path in check annotations
+
+1. Trivy's public scan annotations rendered the Java result target as only `Java`, so they hid the path needed to investigate the remaining findings.
+2. Updated CI to use each finding's `PkgPath` when present, falling back to the result target. The next scan will show whether the report includes a useful path for precise remediation.
+3. The embedded JavaScript passed `node --check`, GitHub Actions YAML parsed, the Dockerfile check and Compose security-wiring script passed, and `git diff --check` passed. A bare local Compose parse without required secrets failed as expected; the repository validation script reran it using synthetic placeholders and passed.
+4. Push this diagnostics-only change and inspect the next CI annotation. Keep the security gate strict; no suppression or false claim of a clean image.

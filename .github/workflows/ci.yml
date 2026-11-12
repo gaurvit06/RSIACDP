@@ -234,7 +234,7 @@ jobs:
           const findings = (report.Results || []).flatMap((result) =>
             (result.Vulnerabilities || [])
               .filter((item) => ['HIGH', 'CRITICAL'].includes(item.Severity))
-              .map((item) => ({ target: result.Target, ...item })),
+              .map((item) => ({ ...item, target: item.PkgPath || result.Target })),
           );
           for (const item of findings) {
             const title = 'Neo4j ' + item.Severity + ' ' + item.VulnerabilityID;
