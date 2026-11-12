@@ -7415,12 +7415,12 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - The Compose configuration job failed at `scripts/test-compose-config.ps1` line 51. The assertion incorrectly required Docker Compose to report `POSTGRES_PASSWORD` first when multiple required secrets were unset. This is an error-order assumption, not an application failure. Updated it to accept any required-secret diagnostic; separate checks still test every secret individually. The revised script passes locally.
 - The Compose E2E job passed PostgreSQL, Neo4j and Caddy image scans at the step level, OCR/PDF processing, investigator intake, processing, campaign/graph linking, reports, corrections, encrypted backup/restore, and PostgreSQL-to-Neo4j rebuild. Final scan enforcement failed for six High findings in Neo4j 5.26.33: jackson-core/databind 2.22.2 and Debian zlib1g 1:1.3.dfsg+really1.3.1-1+b1. The new annotation diagnostic exposed exact packages and fixed versions.
 
-### Remediation prepared (not yet committed/pushed)
+### Remediation attempt pushed; security gate still failing
 
 - Switched the Neo4j base to official Community image `2026.10.2-trixie`; Compose and Render now build/use the same custom `rsaicdp-neo4j:2026.10.2` image so CI scans the actual hosted image definition, including its password wrapper.
 - Updated the custom entrypoint to preserve Compose's `NEO4J_AUTH` mode and to construct it from Render's generated `NEO4J_PASSWORD` when deployed. Added weekly Dependabot coverage for `/deployment/neo4j` and updated version/upgrade documentation.
 - Added a Compose config assertion that Compose uses the same Neo4j Dockerfile as Render. Changed the missing-secret assertion to be order-independent.
-- Neo4j's official 2026.10.2 release notes mention bundled dependency fixes. The current Trivy scan and runtime checks on the new image are still pending; the release note is not treated as scan proof.
+- Commit `82fdc75` was pushed. Hosted run `43232234950` built and started the new image, passed all image scans at the step level plus OCR/PDF, complete investigator E2E, encrypted backup/restore and graph rebuild, but strict enforcement still found the same six High findings. The diagnostic annotations show Jackson `2.22.2` and Debian zlib1g `1:1.3.dfsg+really1.3.1-1+b1` remain in the new Neo4j image.
 
 ### Checks after the proposed remediation
 
@@ -7433,7 +7433,31 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 
 ### Next steps
 
-1. Commit and push the order-independent CI guard and Neo4j 2026.10.2 update to `codex/initial-platform`.
-2. Inspect the new hosted build, runtime/E2E, and Trivy results. If the new image has any remaining fixed High/Critical findings, remediate them without suppressing the strict gate.
-3. Update `BUILD_STATUS.md` with the hosted results and exact next actions.
-4. Cloud provider setup, production provider-backed uploads, deployed recovery checks, browser/accessibility review, and authorized real-world evaluation remain incomplete.
+1. Patch Neo4j's Debian packages and vulnerable Jackson jars in the custom image, flatten the final root filesystem, then commit and push the change.
+2. Inspect the new hosted build, runtime/E2E, and strict Trivy result. Do not add exceptions for the fixed findings.
+3. Cloud provider setup, production provider-backed uploads, deployed recovery checks, browser/accessibility review, and authorized real-world evaluation remain incomplete.
+
+## 2026-11-12 20:07 — Patched and flattened Neo4j image prepared
+
+### Implemented locally (not yet committed/pushed)
+
+- The 2026.10.2 image still contained the exact fixed-vulnerability versions from run `43232234950`; the prior attempted upgrade did not pass the strict gate.
+- Reworked `deployment/neo4j/Dockerfile` into a multi-stage build: apply Debian package security updates (including zlib1g), download jackson-core/databind 2.22.3 from Maven Central, verify the downloaded jars with pinned SHA-256 digests, replace every matching 2.22.2 jar under `NEO4J_HOME`, and copy the merged root filesystem into a fresh `scratch` image so parent-layer copies are absent.
+- Preserved the official Neo4j 2026.10.2 runtime contract in the final image: environment, Java/Neo4j paths, ports, `/data` and `/logs`, working directory, default stop signal, entrypoint and command.
+- Updated README and engineering walkthrough to explain the image remediation and state clearly that scan/runtime verification is pending.
+
+### Checks
+
+- `docker build --check --file deployment/neo4j/Dockerfile .`: passed; Docker parsed the custom build and resolved the official Neo4j 2026.10.2 Trixie base metadata. This was a build check, not a full image build.
+- `scripts/test-compose-config.ps1`: passed.
+- Vercel, Render, GitHub Actions and Dependabot manifests parsed successfully; Compose and Render both reference the shared custom Neo4j image.
+- `bash -n deployment/neo4j/render-entrypoint.sh`: passed.
+- `git diff --check`: passed before the latest status/documentation append; rerun before commit.
+- No full local Neo4j image build or local Trivy scan was run. The next hosted workflow must prove the patched merged image builds, passes strict scanning, and runs E2E/recovery checks.
+
+### Exact next steps
+
+1. Re-run `git diff --check`, Compose configuration, `docker build --check`, and manifest assertions.
+2. Commit/push the patched image and this checkpoint to `codex/initial-platform` (already authorized).
+3. Inspect the new GitHub Actions scan annotations. If the base package upgrade or jar replacement misses a vulnerable copy, fix the image and rerun; keep the gate strict.
+4. Cloud credentials/accounts, hosted deployment, cloud backup/restore, browser/accessibility review, and evaluation on authorized time-separated labels remain incomplete.
