@@ -6,8 +6,8 @@ This guide records the selected no-card deployment path and the exact setup stil
 
 | Component | Observed state | What this proves |
 | --- | --- | --- |
-| GitHub | Branch `codex/initial-platform` is pushed through `b3b05086da546ebab9b801bec02fe1b1962cef0c`. | GitHub Actions run [43295235569](https://github.com/gaurvit06/RSIACDP/actions/runs/43295235569) completed all six jobs: backend, frontend, Compose config, Compose E2E/recovery, web container, and operations scripts. This does not provision cloud services. |
-| Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. The currently deployed API route is still unavailable. |
+| GitHub | Branch `codex/initial-platform` is pushed through [`d1797ff`](https://github.com/gaurvit06/RSIACDP/commit/d1797ff25e7bf1206cf15692de3b1588a333341a). | GitHub Actions run [43300545988](https://github.com/gaurvit06/RSIACDP/actions/runs/43300545988) completed all six jobs successfully: backend, frontend, Compose config, Compose E2E/recovery, web container, and operations scripts. This does not provision cloud services. |
+| Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. `/api/health/live` still returns HTTP 404 because there is no backend origin configured. |
 | Render backend | No service exists. The verified Render setup flow stopped at card verification. | Render remains unused; do not retry it under the no-card constraint. |
 | Hostless backend | Not created or connected yet. | `hostless.yaml` prepares one API and one queue worker within the documented free resource ceiling. A project URL and protected environment values are still needed. |
 | Supabase | Existing Free project observed healthy in Tokyo (`ap-northeast-1`); `private-evidence` was private. | The schema and Alembic state remain unverified because `alembic_version` was not queried. The dashboard's general overview is not enough to decide whether startup migrations are safe. |
