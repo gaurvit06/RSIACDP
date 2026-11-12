@@ -24,7 +24,12 @@ RUN set -eux; \
     for artifact in jackson-core jackson-databind; do \
       matches="$(find -L "$neo4j_home" -type f -name "$artifact-2.22.2.jar" -print)"; \
       if [ -z "$matches" ]; then \
-        echo "Expected vulnerable $artifact 2.22.2 jar not found under $neo4j_home; available versions:" >&2; \
+        fixed_matches="$(find -L "$neo4j_home" -type f -name "$artifact-2.22.3.jar" -print)"; \
+        if [ -n "$fixed_matches" ]; then \
+          echo "$artifact is already at fixed version 2.22.3"; \
+          continue; \
+        fi; \
+        echo "Expected $artifact 2.22.2 or fixed 2.22.3 jar not found under $neo4j_home; available versions:" >&2; \
         find -L "$neo4j_home" -type f -name "$artifact-*.jar" -print >&2; \
         exit 1; \
       fi; \

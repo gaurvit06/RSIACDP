@@ -7489,3 +7489,9 @@ Next steps, in order:
 - Updated `.github/workflows/ci.yml` to extract the relevant Docker/BuildKit shell trace, checksum, missing-file, Jackson path, and failure lines and publish each as a short sanitized annotation. This is diagnostic-only; it keeps build and vulnerability enforcement strict.
 - Checks actually run: embedded Node script passed `node --check`; GitHub Actions YAML parsed successfully using PyYAML in the existing worker image; `docker compose config --quiet`, `scripts/test-compose-config.ps1`, and `git diff --check` passed.
 - Next: commit/push this diagnostic improvement, inspect the next hosted result for the exact artifact and path, and patch based on that evidence. Do not widen the file search or ignore scanner findings without confirming the actual image contents.
+
+## 2026-11-12 20:02 IST — Make the Jackson image patch idempotent
+
+- Hosted run [`43237868337`](https://github.com/gaurvit06/RSIACDP/actions/runs/43237868337) (`e40d8a4`) confirmed the targeted annotations work. The build trace showed `/var/lib/neo4j/lib/jackson-core-2.22.3.jar` already existed, so the Dockerfile failed because it required a 2.22.2 file for every artifact. The Compose E2E job failed during the build; the rest of the workflow was still running at the time of review.
+- Updated the Dockerfile to replace each vulnerable 2.22.2 JAR, accept an already-fixed 2.22.3 JAR, and fail with a version listing when neither expected version is found. It still verifies downloaded hashes and the strict Trivy scan remains unchanged.
+- Next: run Dockerfile parse/config/Compose checks, update the walkthrough with this finding, commit and push, then check the hosted image build, both Jackson versions, Debian scan, runtime and full recovery workflow. Do not claim the security gate passes until the hosted Trivy report confirms it.
