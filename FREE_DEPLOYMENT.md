@@ -6,13 +6,25 @@ This guide prepares a $0 demonstration deployment for the user-selected Vercel, 
 
 | Component | Observed state | Verification boundary |
 | --- | --- | --- |
-| GitHub | Branch `codex/initial-platform` is pushed through `cb09da0`. | Latest hosted CI for this revision passed all six jobs: [run 43287764588](https://github.com/gaurvit06/RSIACDP/actions/runs/43287764588). |
+| GitHub | Branch `codex/initial-platform` is pushed. | CI run [43287764588](https://github.com/gaurvit06/RSIACDP/actions/runs/43287764588) passed all six jobs for application revision `cb09da0`. All six individual job views for documentation-only commit `7d86811` reported success in [run 43290378255](https://github.com/gaurvit06/RSIACDP/actions/runs/43290378255), although the run overview still displayed `In progress` at the last check. Check Actions for the newest commit's result. |
 | Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Confirms static page delivery only; it does not establish a working authenticated API workflow. |
 | Vercel API rewrite | `/api/health/live` responds HTTP 404. | Expected while its configured Render destination has no deployed service. |
 | Render backend | No service exists; `/health/live` and `/health/ready` on the planned hostname return HTTP 404. | Blueprint onboarding was canceled when card verification and a temporary USD 1 authorization were required. No card was entered and no resource was created. |
 | Supabase | Existing Free project observed healthy in Tokyo; `private-evidence` bucket's Public switch was off. | The dashboard overview showed no migrations and no backups. The database schema and migration state were not verified by querying `alembic_version`; do not infer them from the overview. |
 
 The hosted application is therefore **not deployed end to end**. Do not submit real investigation data to the Vercel site until the API, persistence, private storage, and required hosted checks are available.
+
+## No-card backend alternative assessed — 13 November 2026
+
+Vercel's Python runtime supports FastAPI, and Vercel Services can route a frontend and FastAPI service from one Vercel project. Services are still in beta. This is a technically possible host change, but it is **not a configuration-only replacement for Render**. [Python runtime](https://vercel.com/docs/functions/runtimes/python) · [Vercel Services](https://vercel.com/docs/services)
+
+The current application has three concrete incompatibilities to resolve before such a move could be considered deployable:
+
+1. **Uploads:** The app accepts up to 10 MiB, while Vercel Function request and response bodies are limited to 4.5 MB. A Vercel design would need browser-to-private-Supabase direct uploads or another safe upload protocol, followed by a small authenticated API request that finalizes the case. That flow must preserve consent, encryption, private-object controls, size/type checks, retention, and audit records. [Vercel Function limits](https://vercel.com/docs/functions/limitations)
+2. **Durable processing:** The API currently starts its queue worker in FastAPI's lifespan. Serverless request instances cannot be treated as a persistent worker process. Vercel Queues is available in beta on all plans, but its queue producer/consumer protocol and idempotent processing would need to be implemented and tested against the existing PostgreSQL job records. [Vercel Queues](https://vercel.com/docs/queues)
+3. **OCR runtime and availability:** `backend/Dockerfile` installs the Tesseract OS binary. Vercel Python Functions do not run this Docker image, so OCR must either package a compatible binary or be moved into a container worker. Vercel Daemons can run container workers, but Hobby limits them to 5 Active CPU-hours and 420 GB-hours of provisioned memory per month; Vercel stops daemons after the team reaches either quota. That is not a continuously available worker guarantee. [Vercel Daemon limits](https://vercel.com/docs/daemons/limits)
+
+No Vercel backend migration is implemented or selected. Preserve the chosen Vercel/Render/Supabase design unless the owner authorizes a backend-host change after reviewing these limits. Do not represent the static Vercel site or a small serverless rewrite as full deployment.
 
 This architecture can run the application without paid services, but it is not a safe production home for real investigation evidence. Free services can pause, restart, lose local files, and lack managed database backups. Use synthetic or otherwise authorized low-risk evidence until an approved backup, privacy, and availability plan exists.
 

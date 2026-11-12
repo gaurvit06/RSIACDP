@@ -5,6 +5,7 @@ import { canApproveDisposition, correctionApplyValid, correctionCaseChangeOpen, 
 import { filterGraphData, graphNodeReviewLabel, type GraphEdge, type GraphNode } from './graph-filters';
 import { clearExpiredSession, shouldExpireSession } from './auth-session';
 import { evidenceModeLabel, type EvidenceMode } from './evidence-mode';
+import { fetchApi, parseApiResponse } from './api-client';
 
 const API = import.meta.env.VITE_API_URL ?? '';
 type User = { id: number; email: string; role: string };
@@ -21,26 +22,10 @@ async function request(path: string, token: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (!['GET', 'HEAD', 'OPTIONS'].includes((init.method || 'GET').toUpperCase()) && token) headers.set('X-CSRF-Token', token);
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API}${path}`, { ...init, headers, credentials: 'include' });
+  const response = await fetchApi(`${API}${path}`, { ...init, headers, credentials: 'include' });
   if (shouldExpireSession(response.status, path)) window.dispatchEvent(new Event('casework:unauthorized'));
-  if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(apiErrorMessage(data.detail, `Request failed (${response.status})`)); }
+  if (!response.ok) await parseApiResponse(response, 'Request failed');
   return response;
-}
-
-function apiErrorMessage(detail: unknown, fallback: string): string {
-  if (typeof detail === 'string' && detail.trim()) return detail;
-  if (Array.isArray(detail)) {
-    const issues = detail.map(issue => {
-      if (!issue || typeof issue !== 'object') return '';
-      const item = issue as { loc?: unknown; msg?: unknown };
-      const location = Array.isArray(item.loc) ? item.loc.filter(part => part !== 'body').join('.') : '';
-      const message = typeof item.msg === 'string' ? item.msg : 'Invalid request';
-      return location ? `${location}: ${message}` : message;
-    }).filter(Boolean);
-    if (issues.length) return issues.join('; ');
-  }
-  if (detail && typeof detail === 'object' && 'message' in detail && typeof detail.message === 'string') return detail.message;
-  return fallback;
 }
 
 function formatSourceLocation(location: string): string {
@@ -130,11 +115,9 @@ export default function App() {
   }
   useEffect(() => {
     let stopped = false;
-    fetch(`${API}/api/auth/me`, { credentials: 'include' }).then(async response => {
+    fetchApi(`${API}/api/auth/me`, { credentials: 'include' }).then(async response => {
       if (response.status === 401) return null;
-      const data = await response.json();
-      if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not restore the session'));
-      return data as User & { csrf_token: string };
+      return await parseApiResponse<User & { csrf_token: string }>(response, 'Could not restore the session');
     }).then(async session => {
       if (!session || stopped) return;
       setToken(session.csrf_token || ''); setUser(session);
@@ -223,8 +206,8 @@ export default function App() {
   async function login(email: string, password: string, create: boolean, setupCode: string) {
     setBusy(true); setError('');
     try {
-      const response = await fetch(`${API}/api/auth/${create ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password, setup_code: setupCode, session_mode: 'cookie' }) });
-      const data = await response.json(); if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not sign in'));
+      const response = await fetchApi(`${API}/api/auth/${create ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password, setup_code: setupCode, session_mode: 'cookie' }) });
+      const data = await parseApiResponse<{ csrf_token?: string; user: User }>(response, create ? 'Could not create account' : 'Could not sign in');
       setToken(data.csrf_token || ''); setUser(data.user); await loadCases(data.csrf_token || '');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -335,9 +318,8 @@ function AuthScreen({ onSubmit, busy, error }: { onSubmit: (email: string, passw
   async function submitReset(event: React.FormEvent) {
     event.preventDefault(); setResetBusy(true); setResetError(''); setResetNotice('');
     try {
-      const response = await fetch(`${API}/api/auth/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: resetToken, new_password: resetPassword }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not reset password'));
+      const response = await fetchApi(`${API}/api/auth/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: resetToken, new_password: resetPassword }) });
+      const data = await parseApiResponse<{ sign_in_message?: string }>(response, 'Could not reset password');
       setResetNotice(data.sign_in_message || 'Password updated. Sign in with the new password.');
       setResetToken(''); setResetPassword(''); setResetMode(false); setCreate(false);
     } catch (e) { setResetError((e as Error).message); }
@@ -584,10 +566,10 @@ function CorrectionAccess() {
   useEffect(() => { fetch(`${API}/api/policy`).then(r => r.json()).then(p => setRetentionDays(p.retention_days)).catch(() => undefined); }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError('');
-    try { const response = await fetch(`${API}/api/corrections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ case_ref: caseRef.toUpperCase(), requester_email: email, description }) }); const data = await response.json(); if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not submit request')); setReceipt(data); setStatusRef(data.request_ref); setStatusToken(data.status_token); setCaseRef(''); setEmail(''); setDescription(''); }
+    try { const response = await fetchApi(`${API}/api/corrections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ case_ref: caseRef.toUpperCase(), requester_email: email, description }) }); const data = await parseApiResponse<any>(response, 'Could not submit request'); setReceipt(data); setStatusRef(data.request_ref); setStatusToken(data.status_token); setCaseRef(''); setEmail(''); setDescription(''); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  async function checkStatus(e: React.FormEvent) { e.preventDefault(); setBusy(true); setError(''); setStatusResult(null); try { const response = await fetch(`${API}/api/corrections/${encodeURIComponent(statusRef)}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status_token: statusToken }) }); const data = await response.json(); if (!response.ok) throw new Error(apiErrorMessage(data.detail, 'Could not check request')); setStatusResult(data); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
+  async function checkStatus(e: React.FormEvent) { e.preventDefault(); setBusy(true); setError(''); setStatusResult(null); try { const response = await fetchApi(`${API}/api/corrections/${encodeURIComponent(statusRef)}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status_token: statusToken }) }); const data = await parseApiResponse<any>(response, 'Could not check request'); setStatusResult(data); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
   return <div className="correction-access"><button className="secondary" onClick={() => setOpen(true)}>Request a correction</button>{open && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setOpen(false)}><section ref={correctionDialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="correction-dialog-title" tabIndex={-1}><header><div><div className="eyebrow">RECORD REVIEW REQUEST</div><h2 id="correction-dialog-title">Request a correction</h2></div><button type="button" className="icon-button" aria-label="Close correction request" onClick={() => setOpen(false)}><X size={18}/></button></header><p className="modal-intro">Provide the case reference and explain what information you believe is incorrect. Requests are deleted after {retentionDays} days. This form does not confirm whether a case reference exists.</p>{error && <div className="alert error">{error}</div>}{receipt && <div className="alert success">Request received. Reference: <b>{receipt.request_ref}</b><br/>Save this status token; it is shown only once: <code>{receipt.status_token}</code></div>}<form onSubmit={submit}><label>Case reference<input required pattern="RC-[A-Fa-f0-9]{8}" value={caseRef} onChange={e => setCaseRef(e.target.value.toUpperCase())} placeholder="RC-1234ABCD"/></label><label>Your email<input type="email" required value={email} onChange={e => setEmail(e.target.value)}/></label><label>What should be reviewed?<textarea required minLength={15} maxLength={5000} rows={5} value={description} onChange={e => setDescription(e.target.value)}/></label><footer><button className="secondary" type="button" onClick={() => setOpen(false)}>Close</button><button className="primary" disabled={busy}>{busy ? 'Submitting…' : 'Submit request'}</button></footer></form><hr/><h3>Check request status</h3><form onSubmit={checkStatus}><label>Request reference<input required value={statusRef} onChange={e => setStatusRef(e.target.value.toUpperCase())} placeholder="CR-…"/></label><label>Status token<input required minLength={32} value={statusToken} onChange={e => setStatusToken(e.target.value)}/></label><button className="secondary" disabled={busy}>{busy ? 'Checking…' : 'Check status'}</button></form>{statusResult && <div className="alert success">Status: <b>{statusResult.status}</b><p>{statusResult.status_message}</p></div>}</section></div>}</div>;
 }
 
