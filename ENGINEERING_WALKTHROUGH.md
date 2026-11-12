@@ -984,3 +984,9 @@ Primary deployment references: [Vercel external rewrites](https://vercel.com/doc
 3. Added an image-build guard that replaces every `parquet-jackson-1.18.1.jar`, verifies no old-named jar remains, and fails unless a 1.18.2 jar is present. The next hosted strict Trivy scan and complete runtime/recovery workflow are still required before the Neo4j image is considered deployable.
 
 Apache's [Parquet 1.18.2 release](https://github.com/apache/parquet-java/releases/tag/apache-parquet-1.18.2) includes the Jackson upgrade; its [upstream issue](https://github.com/apache/parquet-java/issues/3857) explains why excluding the shaded module breaks Parquet's write path.
+
+## 9.94 Verify the updated image and recovery flow in hosted CI
+
+1. Pushed the Parquet replacement in commit `fade4c0`. Hosted run [`43242930699`](https://github.com/gaurvit06/RSIACDP/actions/runs/43242930699) completed successfully: frontend, backend, Compose configuration, web-container, operations-script and Compose E2E jobs all passed.
+2. The configured image vulnerability scans passed, including Neo4j after replacing the vulnerable shaded Parquet JAR. Compose E2E passed image startup, OCR of a scanned PDF, synthetic intake through reports and corrections, encrypted backup/live restore, schema migration, and graph rebuild from PostgreSQL. This is hosted CI evidence for the repository revision; it is not evidence of a live Vercel/Render/Supabase deployment.
+3. Continue with provider setup and deployed checks only after service accounts/secrets are available to the owner: configure Vercel, Render, Supabase, TLS, private storage, health checks and backups; conduct browser/accessibility review; and run the time-separated evaluation using authorized labeled data. Evaluation results remain pending, and no performance claims are made.
