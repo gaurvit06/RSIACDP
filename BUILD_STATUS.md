@@ -7527,3 +7527,20 @@ Next steps, in order:
 - These are explicitly generator-defined synthetic rehearsal values. The TF-IDF comparator is text-only and intentionally predicts no entity, campaign, or evidence-support claims; the time boundary excludes app/worker, retrieval, OCR, graph operations, training and I/O. No real-world performance or production latency claim is supported.
 - Updated `backend/evaluation/README.md` and the engineering walkthrough with the hash, metrics, limits, and interpretation. Full/no-graph application runs and LLM/web-search with lawful retrieval remain unmeasured; they cannot be honestly inferred from this baseline rehearsal. Evaluation on independent, authorized annotations remains pending.
 - Checks actually run: the scorer completed successfully in the existing container using a read-only backend mount; the manifest hash matched; and `git diff --check` passed. Provider deployment and manual browser/accessibility review also remain incomplete.
+
+## 2026-11-12 21:04 IST — Tighten fee-request extraction
+
+- Reviewed the parser after the synthetic full-pipeline rehearsal exposed a false candidate: a mere phrase such as “A registration fee was mentioned” was extracted as `fee_request`.
+- Replaced the broad substring rule with deterministic, sentence-scoped checks: explicit payment action before a fee/deposit/charge, or an explicit obligation after it. Added conservative no-fee/negation/waiver exclusions and exact source-span recording. Clause boundaries are precomputed once and binary-searched per candidate to avoid quadratic rescans. This remains a review candidate and does not change the finding/verdict rules.
+- Added negative tests for generic fee mentions, mentions in separate clauses, no-fee and waived-fee text; added positive tests for explicit send/payment actions, mandatory fees, decimal amounts, and exact offsets.
+- Checks: `python -m unittest tests.test_extract -v` passed (29 tests). The first full-suite attempt mounted the repository read-only; two pre-existing baseline tests correctly failed because they write under `.test-runtime`. Reran using a fresh temporary copy of tracked backend code and the dependency-complete worker image with network disabled: `backend/run_ci_tests.py` passed — 232 unit tests (2 opt-in PostgreSQL tests skipped), 15 isolated API-flow tests, and 2 proxy-header tests. The temporary copy is under OS Temp; no repository runtime files, shared database, or containers were modified. The local `.venv` lacks FastAPI, so tests ran in the existing worker image.
+- Updated `ENGINEERING_WALKTHROUGH.md` section 9.95 with the applied-ML, product-safety, full-stack, and deployment rationale and steps.
+- Not yet committed or pushed. Focused extraction tests and the complete backend runner passed on the final code, then `git diff --check` passed; the hosted run for this source change remains to be run.
+
+Next steps, in order:
+
+1. Run `git diff --check` and inspect the final parser/documentation diff.
+2. Commit and push the extraction correction and documentation (push was authorized earlier); inspect its hosted CI result.
+3. Continue the full-versus-no-graph synthetic integration rehearsal only if the fixture can avoid shared-domain campaign leakage; label any generator-derived outcomes as smoke/integration results, not accuracy results. Do not infer the outstanding LLM/web-search baseline without a configured lawful provider.
+4. Resume deployment when the owner answers whether the Vercel, Render, and Supabase projects exist, selects the Supabase region/domain, and configures required secret values directly in the provider dashboards. Do not ask for secret values in chat.
+5. Production TLS/storage/egress/backup checks, authorized browser/accessibility review, and independent time-separated evaluation remain incomplete; do not mark the project fully complete before these stages are actually done.

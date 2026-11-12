@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from bisect import bisect_left
 from urllib.parse import urlsplit, urlunsplit
 from dataclasses import dataclass
 
@@ -26,8 +27,32 @@ PATTERNS = {
     "upi_id": re.compile(r"(?<![\w.-])[A-Z0-9._-]{2,256}@[A-Z0-9](?:[A-Z0-9.-]{0,62}[A-Z0-9])?(?=$|[\s,;:!?)}\]]|\.(?=\s|$))", re.I),
     "ifsc_code": re.compile(r"(?<![A-Z0-9])[A-Z]{4}0[A-Z0-9]{6}(?![A-Z0-9])", re.I),
     "url": re.compile(r"https?://[^\s<>\"']+", re.I),
-    "fee_request": re.compile(r".{0,100}(?:registration fee|security deposit|processing fee|pay(?:ment)?\s+(?:now|first)|advance fee).{0,100}", re.I),
 }
+FEE_TERM_PATTERN = re.compile(
+    r"\b(?:(?:registration|application|processing|security|training|verification|interview|onboarding|placement|job|document|background)\s+)?(?:fee|deposit|charge)\b",
+    re.I,
+)
+FEE_PAYMENT_BEFORE_PATTERN = re.compile(
+    r"\b(?:pay(?:ment)?|send|transfer|deposit|submit|collect(?:ed)?|charge(?:d)?|"
+    r"asked?\s+to\s+pay|requested?\s+payment|must\s+pay|should\s+pay)\b"
+    r"[^.!?;\r\n]{0,80}$",
+    re.I,
+)
+FEE_REQUIREMENT_AFTER_PATTERN = re.compile(
+    r"^\s*(?:(?:of|amount(?:ing)?\s+to)\s+(?:₹|INR\s*|Rs\.?\s*)?\d[\d,]*(?:\.\d{1,2})?\s*)?"
+    r"(?:(?:is|are|was|were|be|being|has\s+been|will\s+be)\s+)?"
+    r"(?:required|needed|mandatory|payable|due|requested|charged)\b"
+    r"|^\s*(?:needs?\s+to\s+be|must\s+be|should\s+be)\s+paid\b",
+    re.I,
+)
+FEE_NEGATION_PATTERN = re.compile(
+    r"\b(?:no|not|never|without|waived?|free\s+of)\b[^.!?;\r\n]{0,45}"
+    r"\b(?:fee|deposit|charge)\b"
+    r"|\b(?:fee|deposit|charge)\b[^.!?;\r\n]{0,45}"
+    r"\b(?:not\s+(?:required|needed|payable|due|requested|charged|applicable)|waived?|free)\b",
+    re.I,
+)
+CLAUSE_BOUNDARY_PATTERN = re.compile(r"[!?;\r\n]|\.(?=\s|$)")
 BANK_ACCOUNT_PATTERN = re.compile(
     r"(?i)\b(?:bank\s+account|account|a/c)(?:\s+(?:number|no\.?))?\s*[:#=\-]?\s*((?:[0-9][ -]?){8,17}[0-9])\b"
 )
@@ -67,6 +92,13 @@ COMPENSATION_AMOUNT_CONTEXT = re.compile(
 
 def _clean_claim(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
+
+def _clause_bounds(text: str, position: int, boundaries: list[int]) -> tuple[int, int]:
+    """Return a conservative sentence-like span without splitting decimals or hostnames."""
+    right_index = bisect_left(boundaries, position)
+    left = boundaries[right_index - 1] + 1 if right_index else 0
+    right = boundaries[right_index] if right_index < len(boundaries) else len(text)
+    return left, right
 
 def normalize(kind: str, value: str) -> str:
     value = unicodedata.normalize("NFKC", value).strip()
@@ -114,6 +146,7 @@ def normalize(kind: str, value: str) -> str:
 
 def extract(text: str) -> list[Extracted]:
     found: dict[tuple[str, str], Extracted] = {}
+    clause_boundaries = [match.start() for match in CLAUSE_BOUNDARY_PATTERN.finditer(text)]
     bank_account_matches = list(BANK_ACCOUNT_PATTERN.finditer(text))
     bank_account_spans = [match.span(1) for match in bank_account_matches]
     for kind, pattern in PATTERNS.items():
@@ -143,6 +176,26 @@ def extract(text: str) -> list[Extracted]:
                         normalized_host = host.casefold()
                     domain = Extracted("domain", host, normalized_host, text[start:end], match.start(), match.end())
                     found[("domain", domain.normalized)] = domain
+    for match in FEE_TERM_PATTERN.finditer(text):
+        # Check only the containing sentence so unrelated payment language in
+        # a neighboring sentence cannot turn a fee mention into a request.
+        left, right = _clause_bounds(text, match.start(), clause_boundaries)
+        sentence = text[left:right].strip()
+        term_start, term_end = match.start() - left, match.end() - left
+        before, after = sentence[:term_start], sentence[term_end:]
+        if FEE_NEGATION_PATTERN.search(sentence):
+            continue
+        if not (FEE_PAYMENT_BEFORE_PATTERN.search(before) or FEE_REQUIREMENT_AFTER_PATTERN.search(after)):
+            continue
+        raw = sentence
+        start = left + len(text[left:right]) - len(text[left:right].lstrip())
+        end = start + len(raw)
+        normalized = normalize("fee_request", raw)
+        found[("fee_request", normalized)] = Extracted(
+            "fee_request", raw, normalized, text[max(0, start - 90):min(len(text), end + 90)],
+            start, end, 0.75,
+            "Candidate extracted from explicit payment-request or payment-requirement wording; the request and its accuracy are unverified and require investigator review.",
+        )
     for match in bank_account_matches:
         start, end = match.span(1)
         raw = match.group(1).strip()

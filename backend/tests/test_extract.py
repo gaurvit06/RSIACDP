@@ -82,6 +82,40 @@ class ExtractionTests(unittest.TestCase):
         fee = next(item for item in found if item.kind == "fee_request")
         self.assertIn("processing fee", fee.raw.lower())
         self.assertEqual(normalize("fee_request", fee.raw), fee.raw.casefold())
+        text = "The recruiter says a processing fee is needed before onboarding."
+        self.assertEqual(text[fee.start_char:fee.end_char], fee.raw)
+        self.assertIn("unverified", fee.uncertainty)
+
+    def test_fee_mention_without_payment_request_is_not_extracted(self):
+        examples = (
+            "A registration fee was mentioned.",
+            "We are studying processing fees in recruitment messages.",
+            "The vacancy is open. A registration fee was mentioned elsewhere.",
+        )
+        for text in examples:
+            with self.subTest(text=text):
+                self.assertFalse(any(item.kind == "fee_request" for item in extract(text)))
+
+    def test_explicit_payment_request_and_requirement_are_extracted(self):
+        examples = (
+            "Please send a registration fee of INR 500 before onboarding.",
+            "A security deposit is mandatory before the interview.",
+            "The processing fee of INR 500.00 is required.",
+        )
+        for text in examples:
+            with self.subTest(text=text):
+                fee = next(item for item in extract(text) if item.kind == "fee_request")
+                self.assertEqual(text[fee.start_char:fee.end_char], fee.raw)
+
+    def test_no_fee_or_waived_fee_is_not_extracted_as_a_request(self):
+        examples = (
+            "No registration fee is required.",
+            "The processing fee is not payable.",
+            "The security deposit was waived.",
+        )
+        for text in examples:
+            with self.subTest(text=text):
+                self.assertFalse(any(item.kind == "fee_request" for item in extract(text)))
 
     def test_amount_is_a_payment_claim_only_near_explicit_payment_wording(self):
         text = "The recruiter asks you to pay INR 2,500 before onboarding."
