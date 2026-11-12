@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@11.25.0 --activate && pnpm install --frozen-lockfile
@@ -7,7 +7,7 @@ ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 RUN pnpm run build
 
-FROM nginx:1.30.6-alpine3.24
+FROM nginx:1.31.8-alpine3.24
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx-entrypoint.sh /usr/local/bin/casework-nginx-entrypoint.sh
