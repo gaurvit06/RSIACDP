@@ -120,6 +120,34 @@ jobs:
       RDAP_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
+      - name: Build Neo4j runtime image with plain progress output
+        id: build_neo4j
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          docker compose --progress plain build neo4j 2>&1 | tee neo4j-build.log
+          build_status=${PIPESTATUS[0]}
+          echo "exit_code=$build_status" >> "$GITHUB_OUTPUT"
+          exit "$build_status"
+      - name: Publish Neo4j build failure diagnostics
+        if: steps.build_neo4j.outcome == 'failure'
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const lines = fs.readFileSync('neo4j-build.log', 'utf8').trim().split(/\r?\n/).slice(-24);
+          const message = lines
+            .map((line) => line.replace(/(password|secret|token|api[_-]?key|authorization)(\s*[:=]\s*)\S+/gi, '$1$2[REDACTED]'))
+            .join('\n')
+            .replaceAll('%', '%25')
+            .replaceAll('\r', '%0D')
+            .replaceAll('\n', '%0A');
+          process.stdout.write('::error title=Neo4j image build failure::' + message + '\n');
+          NODE
+      - name: Enforce Neo4j image build result
+        if: always() && steps.build_neo4j.outcome == 'failure'
+        run: exit 1
       - name: Start the PostgreSQL, Neo4j, API, worker, and web stack
         run: docker compose up --build --wait --wait-timeout 300
       - name: Pull the production TLS proxy image for scanning

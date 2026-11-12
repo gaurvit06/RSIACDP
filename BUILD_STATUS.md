@@ -7439,7 +7439,7 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 
 ## 2026-11-12 20:07 — Patched and flattened Neo4j image prepared
 
-### Implemented locally (not yet committed/pushed)
+### First patched-image attempt pushed; hosted build failed before E2E
 
 - The 2026.10.2 image still contained the exact fixed-vulnerability versions from run `43232234950`; the prior attempted upgrade did not pass the strict gate.
 - Reworked `deployment/neo4j/Dockerfile` into a multi-stage build: apply Debian package security updates (including zlib1g), download jackson-core/databind 2.22.3 from Maven Central, verify the downloaded jars with pinned SHA-256 digests, replace every matching 2.22.2 jar under `NEO4J_HOME`, and copy the merged root filesystem into a fresh `scratch` image so parent-layer copies are absent.
@@ -7454,10 +7454,19 @@ Re-read this file, `BUILD_PLAN.md`, repository instructions (if added), and `git
 - `bash -n deployment/neo4j/render-entrypoint.sh`: passed.
 - `git diff --check`: passed before the latest status/documentation append; rerun before commit.
 - No full local Neo4j image build or local Trivy scan was run. The next hosted workflow must prove the patched merged image builds, passes strict scanning, and runs E2E/recovery checks.
+- Commit `0ba356d` was pushed. Hosted run `43234340852` failed in the stack-start step while building the image before it reached vulnerability scanning. Its public annotation only showed the step exit code; GitHub's public job-log download was unavailable. C: had about 515 MB free and the Docker cache/active data already occupied several GB, so a full local image build was not attempted.
 
 ### Exact next steps
 
-1. Re-run `git diff --check`, Compose configuration, `docker build --check`, and manifest assertions.
-2. Commit/push the patched image and this checkpoint to `codex/initial-platform` (already authorized).
-3. Inspect the new GitHub Actions scan annotations. If the base package upgrade or jar replacement misses a vulnerable copy, fix the image and rerun; keep the gate strict.
-4. Cloud credentials/accounts, hosted deployment, cloud backup/restore, browser/accessibility review, and evaluation on authorized time-separated labels remain incomplete.
+1. Get actionable Docker build output from the next hosted run. The pending workflow change separates the Neo4j build, logs plain BuildKit progress and publishes the final redacted log lines as a check annotation if it fails.
+2. Fix the precise build failure, then verify strict Trivy scanning and runtime/E2E/recovery checks on the patched image.
+3. Cloud credentials/accounts, hosted deployment, cloud backup/restore, browser/accessibility review, and evaluation on authorized time-separated labels remain incomplete.
+
+## 2026-11-12 20:14 — Hosted Neo4j build failure diagnostics
+
+- Run `43234340852` (`0ba356d`) failed in the Compose stack-start step while building the patched Neo4j image. Its public check annotation contained only the failing step and exit code. The public job-log API does not provide the build command output to this session.
+- Local C: space was about 515 MB with 5.5 GB of Docker images, 5.4 GB of volumes and 4.3 GB of build cache. No cleanup or full local Neo4j image build was attempted; existing local containers and data remain untouched.
+- Updated `.github/workflows/ci.yml` locally to build Neo4j separately with plain BuildKit progress, save the log, and publish a sanitized final-log annotation on failure before enforcing the build gate. This diagnostic update is not yet committed or pushed.
+- The patched Dockerfile still passes `docker build --check`; that verifies parsing only, not the apt upgrade, Maven downloads, SHA checks, jar replacement, flattened image, or runtime.
+
+Next: rerun Compose config/YAML and whitespace checks; commit and push the diagnostic workflow change plus this status; inspect its annotations, fix the precise Docker build error, and then verify strict Trivy and complete hosted E2E/recovery. Do not weaken the scan gate. Hosted deployment/provider credentials, cloud recovery, browser/accessibility review, and authorized real-world evaluation remain incomplete.
