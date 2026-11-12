@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Compose configuration
         run: docker compose config --quiet
-      - name: Verify required secret and Neo4j health-check wiring
+      - name: Verify Compose and legacy Render blueprint wiring
         shell: pwsh
         run: ./scripts/test-compose-config.ps1
 
