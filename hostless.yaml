@@ -1,5 +1,6 @@
-# No-card, free-allowance deployment target. This deliberately keeps each
-# long-running process within the documented free resource deduction.
+# Hostless was selected by the owner. The API and worker together request
+# 0.2 vCPU and 512 MB RAM; proceed only if the account dashboard confirms
+# its active no-card entitlement covers this workload with a $0 estimate.
 build:
   system: docker
 
