@@ -6,7 +6,7 @@ The owner authorized changing the backend away from Render after its account-spe
 
 | Component | Observed state | What this proves |
 | --- | --- | --- |
-| GitHub | Branch `codex/initial-platform` is pushed through [`300260c`](https://github.com/gaurvit06/RSIACDP/commit/300260c53b26632fd62bfeb62e0422c2ca9613f9). | GitHub Actions run [43346448189](https://github.com/gaurvit06/RSIACDP/actions/runs/43346448189) completed successfully for this commit. This does not provision cloud services. |
+| GitHub | Branch `codex/initial-platform` is pushed through docs commit [`03c230a`](https://github.com/gaurvit06/RSIACDP/commit/03c230a26e42d27ced1e5f106a332a847930b4af). | Docs-only run [43349274823](https://github.com/gaurvit06/RSIACDP/actions/runs/43349274823) passed all six jobs; application code at `300260c` passed run [43346448189](https://github.com/gaurvit06/RSIACDP/actions/runs/43346448189). This does not provision cloud services. |
 | Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. `/api/health/live` still returns HTTP 404 because there is no backend origin configured. |
 | Render backend | No service exists. The verified Render setup flow stopped at card verification. | Render remains unused; do not retry it under the no-card constraint. |
 | Backend host | Not selected; Hostless is a prepared candidate only. No backend service exists. | `hostless.yaml` describes one API and one queue worker for a possible Hostless deployment. Do not provision it until the owner names the provider and verifies no-card/$0 capacity. |
