@@ -6,7 +6,7 @@ The owner selected Hostless on 13 November 2026 after Render's account-specific 
 
 | Component | Observed state | What this proves |
 | --- | --- | --- |
-| GitHub | Branch `codex/initial-platform` is pushed through docs commit [`25be506`](https://github.com/gaurvit06/RSIACDP/commit/25be506343926d40c8fb1dc5aae4ab139fb77a2f). | Docs-only run [43350058285](https://github.com/gaurvit06/RSIACDP/actions/runs/43350058285) passed all six jobs; application code at `300260c` passed run [43346448189](https://github.com/gaurvit06/RSIACDP/actions/runs/43346448189). This does not provision cloud services. |
+| GitHub | Branch `codex/initial-platform` is pushed through [`e818984`](https://github.com/gaurvit06/RSIACDP/commit/e818984d41af02df78f592747409429e9fc06593). | Run [43351557828](https://github.com/gaurvit06/RSIACDP/actions/runs/43351557828) passed all six jobs; Hostless manifest tests passed 35/35 locally. This does not provision cloud services. |
 | Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. `/api/health/live` still returns HTTP 404 because there is no backend origin configured. |
 | Render backend | No service exists. The verified Render setup flow stopped at card verification. | Render remains unused; do not retry it under the no-card constraint. |
 | Backend host | Hostless was selected by the owner, but no account/resource is configured. | `hostless.yaml` describes one API and one queue worker. The account-specific entitlement, no-card eligibility, $0 estimate, assigned region, and API URL still need verification before resource creation. |
