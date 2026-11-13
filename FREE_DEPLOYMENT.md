@@ -10,7 +10,7 @@ This guide records the selected no-card deployment path and the exact setup stil
 | Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. `/api/health/live` still returns HTTP 404 because there is no backend origin configured. |
 | Render backend | No service exists. The verified Render setup flow stopped at card verification. | Render remains unused; do not retry it under the no-card constraint. |
 | Hostless backend | Not created or connected yet. | `hostless.yaml` prepares one API and one queue worker within the documented free resource ceiling. A project URL and protected environment values are still needed. |
-| Supabase | Existing Free project observed healthy in Tokyo (`ap-northeast-1`); `private-evidence` was private. | The schema and Alembic state remain unverified because `alembic_version` was not queried. The dashboard's general overview is not enough to decide whether startup migrations are safe. |
+| Supabase | Existing Free `rsiacdp` project is healthy in Tokyo (`ap-northeast-1`). | On 13 November, read-only SQL returned `NULL` for `to_regclass('public.alembic_version')` and 0 rows from `pg_catalog.pg_tables` in `public`; dashboard also showed “No migrations” and “No backups.” No migration or schema mutation occurred. The application schema is fresh as checked; recheck before first API startup. |
 
 The platform is **not deployed end to end**. Do not submit real investigation evidence until the host's region, privacy terms, data-processing safeguards, backup/restore path, and hosted security checks have been reviewed. Use synthetic records while doing this setup.
 
