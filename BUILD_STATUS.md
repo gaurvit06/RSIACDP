@@ -7777,3 +7777,37 @@ Next steps, in order:
 - Checks: authenticated local browser keyboard review completed; no application code changed, so no automated suite was run. `git diff --check` passed after the documentation edits, with only Git's configured line-ending normalization warnings. No hosted UI, real case data, or screen reader was used.
 - Deployment gate: Hostless still showed the uncompleted profile form on the last live check in this goal turn. Continue only after the owner completes its role/team/use/referral fields and opens the account overview. Then verify the account-specific no-card/$0/capacity/region/terms conditions before provisioning. Keep secrets out of chat.
 - Next steps, in order: (1) check documentation whitespace and current Git state; (2) commit/push this audit update under the owner's prior authorization and inspect CI; (3) wait for the owner to complete Hostless onboarding; (4) verify no-cost eligibility and Supabase schema; (5) deploy only after the $0 gate and run hosted synthetic/privacy/operations checks; (6) retain independent real-world evaluation as pending until lawful labels exist.
+
+## 2026-11-13 09:26 IST — Confirm hosted CI and attempt isolated PostgreSQL/Neo4j acceptance
+
+- Re-read the repository plan/status and checked Git before work. The branch was clean at `1641b4c` (`codex/initial-platform`, tracking `origin/codex/initial-platform`). No `AGENTS.md` was present. The GitHub Actions run for this exact SHA, `43360654327`, completed successfully; all six jobs passed: backend, frontend, operations scripts, Compose configuration, web container, and Compose end-to-end.
+- Reopened the signed-in Hostless tab after the owner replied READY. It still displays the blank “Welcome — Tell us a bit about yourself” onboarding form. No fields were changed or submitted. There is no visible account overview, card requirement, plan/capacity, $0 estimate, region, or terms. No service, migration, or secret was created or entered.
+- Started the already-installed Docker Desktop Engine (`29.9.2`). Preserved the existing `rsiacdp-postgres` container and the local browser review processes. Confirmed no `.env`, `backend/.env`, or `frontend/.env.local` exists in the repository. Generated a separate Compose environment with random test-only secrets outside the repository at `%TEMP%\rsaicdp-compose-acceptance-8c03afef5b7d42f1ad106442945a19c0\compose.env`; its disposable project name is `rsiacdp-acceptance-9b2029f1`. A temporary Compose override maps API/web to loopback ports 8001/5175 and uses unused network `172.31.204.0/24`. `docker compose config` confirmed the isolated subnet and replacement ports without printing secrets.
+- The production frontend image, API image, and worker image built. Neo4j’s pinned base image and patched layer also downloaded/built, but Docker Desktop failed during the final Neo4j image export with `failed to create temp dir ... input/output error`. The host system drive reports 0.00 GB free; Docker subsequently reported its overlay metadata filesystem as read-only. `docker builder prune --filter until=24h --force` failed with `read-only file system`; no prune, volume deletion, container deletion, or cleanup was performed. The new acceptance project has no running containers, and no local Postgres/Neo4j E2E, backup/restore, or OCR run was performed.
+- Checks run: exact-SHA GitHub Actions status (6/6 passed); Docker Compose configuration validation (passed); frontend production image build (passed); API and worker image builds (passed); Docker Engine and Docker storage diagnostics (storage exhausted/read-only); Hostless onboarding visual inspection (still incomplete). No application code changed. The already-passing CI Compose E2E remains the container end-to-end evidence; it is distinct from this failed local attempt.
+- Existing synthetic browser harness remains at `http://127.0.0.1:5173/` with API readiness at `http://127.0.0.1:8000/health/ready`; it is SQLite and not a hosted deployment. The Compose acceptance environment and port override remain outside Git at the paths above for resume. Generated secrets were not printed or copied into the repository. Existing `rsiacdp-postgres`, volumes, and earlier Docker projects were not modified.
+- Exact next steps, in order: (1) free space on the Windows system drive and restart Docker Desktop so its data filesystem is writable; do not delete project volumes; (2) resume the isolated Compose build using the environment/override files below and confirm all service health checks; (3) create a synthetic PDF inside the worker, run `test-compose-e2e.ps1` on loopback port 8001, then run `test-compose-backup-restore.ps1`, OCR verification, and graph rebuild; (4) owner completes Hostless onboarding and leaves the account overview open; (5) verify account-specific no-card eligibility, unused allowance, $0 API+worker estimate, region and terms, and repeat the read-only Supabase schema check; (6) deploy only after that gate, add provider secrets through protected settings, configure Vercel `API_ORIGIN`, and run hosted synthetic/security/retention/correction/backup acceptance; (7) keep independent real-world evaluation and the LLM/web-search baseline marked pending until lawful annotated data and provider configuration exist.
+
+Resume local Compose after Docker's storage is repaired (use a new PowerShell session in the repository):
+
+```powershell
+$envFile = "$env:TEMP\rsaicdp-compose-acceptance-8c03afef5b7d42f1ad106442945a19c0\compose.env"
+$override = "$env:TEMP\rsaicdp-compose-acceptance-8c03afef5b7d42f1ad106442945a19c0\ports.override.yaml"
+$env:COMPOSE_FILE = "$PWD\docker-compose.yml;$override"
+$env:COMPOSE_ENV_FILES = $envFile
+$env:COMPOSE_PROJECT_NAME = "rsiacdp-acceptance-9b2029f1"
+docker compose up --build -d --wait --wait-timeout 300
+```
+
+Then create an isolated synthetic PDF and run the API end-to-end check:
+
+```powershell
+$workerId = (docker compose ps -q worker).Trim()
+docker compose exec -T worker python -c 'import fitz; d=fitz.open(); p=d.new_page(); p.insert_text((72,72), "Synthetic recruitment inquiry; contact pdf-case@example.com"); d.save("/tmp/rsaicdp-e2e.pdf")'
+$pdfPath = Join-Path $env:TEMP "rsaicdp-acceptance-e2e.pdf"
+docker cp "${workerId}:/tmp/rsaicdp-e2e.pdf" $pdfPath
+pwsh -File .\scripts\test-compose-e2e.ps1 -BaseUrl http://127.0.0.1:8001 -EnvironmentFile $envFile -ComposeProjectName $env:COMPOSE_PROJECT_NAME -PdfPath $pdfPath -ExerciseNeo4jOutage -AllowSyntheticWrites
+pwsh -File .\scripts\test-compose-backup-restore.ps1 -AllowSyntheticWrites -RequirePrivateUpload -ApiReadinessUrl http://127.0.0.1:8001/health/ready
+```
+
+The local synthetic environment must remain separate from provider accounts and real case evidence. The current checked-in code passed CI, but hosted deployment and independent Indian recruitment-scam evaluation are still incomplete.
