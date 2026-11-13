@@ -1,12 +1,12 @@
 # Hostless no-card hosted deployment guide
 
-The owner selected Hostless on 13 November 2026 after Render's account-specific signup flow required card verification and a temporary USD 1 authorization. **Hostless is selected, but its account eligibility, current no-card allowance, and $0 estimate have not been verified. No service has been created and no secrets have been entered.** The provider's published free entitlement is shared across resources and billing cycles may retain legacy rules; create the service only if the signed-in account confirms no payment method is required and the displayed total estimate is $0. No Supabase migration was run.
+The owner selected Hostless on 13 November 2026 after Render's account-specific signup flow required card verification and a temporary USD 1 authorization. **Hostless is selected, but its account eligibility, current no-card allowance, and $0 estimate have not been verified. The open Hostless browser page is signed out. No service has been created and no secrets have been entered.** The provider's published free entitlement is shared across resources and billing cycles may retain legacy rules; create the service only if the signed-in account confirms no payment method is required and the displayed total estimate is $0. The owner must sign in directly and leave the account dashboard open so these account-specific details can be checked. No Supabase migration was run.
 
 ## Current state
 
 | Component | Observed state | What this proves |
 | --- | --- | --- |
-| GitHub | Branch `codex/initial-platform` is pushed through [`e818984`](https://github.com/gaurvit06/RSIACDP/commit/e818984d41af02df78f592747409429e9fc06593). | Run [43351557828](https://github.com/gaurvit06/RSIACDP/actions/runs/43351557828) passed all six jobs; Hostless manifest tests passed 35/35 locally. This does not provision cloud services. |
+| GitHub | Branch `codex/initial-platform` is pushed through [`5b513ed`](https://github.com/gaurvit06/RSIACDP/commit/5b513ed3cf943ba2f7b667e6ad6f8201cb90ec9c). | Run [43352286744](https://github.com/gaurvit06/RSIACDP/actions/runs/43352286744) passed all six jobs; Hostless manifest tests passed 35/35 locally before the docs-only follow-up. This does not provision cloud services. |
 | Vercel frontend | `https://rsiacdp-frontend.vercel.app/` responds HTTP 200. | Static frontend delivery only. `/api/health/live` still returns HTTP 404 because there is no backend origin configured. |
 | Render backend | No service exists. The verified Render setup flow stopped at card verification. | Render remains unused; do not retry it under the no-card constraint. |
 | Backend host | Hostless was selected by the owner, but no account/resource is configured. | `hostless.yaml` describes one API and one queue worker. The account-specific entitlement, no-card eligibility, $0 estimate, assigned region, and API URL still need verification before resource creation. |
