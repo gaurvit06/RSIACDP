@@ -2,6 +2,28 @@
 
 A case investigation application for suspicious recruitment offers. The project prioritizes evidence provenance, deterministic identifier linking, and reviewable findings. It must not label people as scammers or present missing search results as proof of fraud.
 
+## Posting decisions on localhost
+
+Submit the offer text through **New case**, or upload a readable screenshot or PDF. After processing, **Model decision** in the case list and **Posting risk prediction** in the case detail show the trained model's decision. Higher and lower risk refer to the wording of this posting. A lower result can coexist with a documented payment demand. The evidence panel, source trail and human disposition remain independently inspectable. JSON and Markdown exports include the versioned prediction.
+
+Casework ships the saved **Hiring Market logistic regression** weights. The model uses 5,000 TF-IDF features and ten numeric inputs. Its higher-risk threshold is **0.35**. The Casework intake rule requires at least three distinct recognized words; URL-only cases request more text. Guided intake accepts salary disclosure and logo presence. Unknown fields use the dashboard defaults. Pasted text and OCR go into the description, with recognized labelled fields mapped to the reference form. An internal case title is never used as the advertised title.
+
+The score reflects the supplied text, available company and requirements fields, salary and logo flags, field completeness, description length and urgency wording. The reference form sets benefits, screening questions and telecommuting flags to zero. Salary and logo flags are user-supplied observations. Neither flag authenticates the company. Case evidence and human review remain available alongside the prediction.
+
+The numeric weights and vocabulary are bundled as data-only JSON in the API and worker images. To refresh existing completed cases after an upgrade, run `python -m app.classify_cases` inside the API container. This command updates only missing or older-version predictions and records the new decision in the audit history. New cases run through the worker normally.
+
+To repeat the export from `backend` using the trusted reference project environment with scikit-learn 1.6.1:
+
+```powershell
+python -m evaluation.export_hiring_market "C:/path/to/reference/Models" app/hiring_market_lr.json.gz
+```
+
+Casework and the original dashboard agreed on all 500 sampled postings when given identical form fields. This checks implementation parity. The historical 3,291-posting evaluation in `evaluation/posting_model_metrics.json` describes the superseded Casework classifier. The dashboard's published performance is specific to its own evaluation. Accuracy on independent Indian offers and OCR-derived text remains unmeasured.
+
+## Current localhost workflow
+
+Hosted deployment is outside the current scope. On this computer, start Docker Desktop, then run `pwsh -File scripts/local.ps1` and open <http://localhost:5175/>. Configuration and project identity are preserved in the Git-ignored `.local` folder, rather than temporary storage. See [LOCALHOST.md](LOCALHOST.md) for accounts, shutdown, rebuilding and recovery. Use `-Action Status` to inspect services and `-Action Stop` to stop them without deleting data.
+
 ## Required software and version baseline
 
 - Docker Desktop or Docker Engine with the Docker Compose plugin. The backup/restore scripts use `docker compose up --wait`; the plugin must support that option. Compose configuration parsing was checked with CLI v5.5.1, but live engine actions have not been verified in this workspace.
@@ -133,3 +155,15 @@ The owner selected Hostless for the no-card backend after Render required card v
 ## Current implementation status
 
 See [BUILD_STATUS.md](BUILD_STATUS.md) for implemented stages and verified checks. The project is under active development; do not treat missing features or unconfigured external sources as operational.
+
+## Automatic verification of published vacancies
+
+On localhost, a completed submission with a recognized employer, job title and sufficient posting text can acquire a source-backed vacancy finding without a reviewer. Open a case and expand **Findings by claim** to inspect the employer listing, retrieval time and comparison. The Hiring Market logistic regression continues to estimate fraud risk from the submission. The worker uses a separate TF-IDF retrieval model to check whether the employer published the role.
+
+1. The worker extracts the employer and role from submitted text, including text recovered from supported uploads. In a pasted posting, separate lines such as `Company: Canonical` and `Job title: Python Engineer` help the parser identify the claim. Include the description. A URL or a title alone is insufficient.
+2. Local Compose enables the Canonical and Figma public Greenhouse boards. The worker downloads the public feed over HTTPS and compares text locally. It never sends case text or applicant identifiers to Greenhouse. The intake notice lists the enabled employers. For another employer, establish the board's ownership from its careers site before adding an `Employer=board-slug` entry to the comma-separated `OFFICIAL_JOB_BOARDS` setting on both API and worker. Set this variable to an empty string for fully offline local corpus mode. Recreate the services after changing configuration.
+3. The verifier requires the exact extracted employer and title (ignoring case and outside whitespace), one qualifying listing, TF-IDF cosine of at least 0.50 and at least 12 shared three-word phrases distinctive within that board. TF-IDF uses log word-trigram counts and smoothed inverse document frequencies. Terms missing from the board count against similarity. Similarity measures overlap, not the probability of fraud. Common employer boilerplate, ambiguous matches, missing sources and failed lookups cannot confirm a vacancy. A published vacancy can be copied into a fraudulent message.
+4. The database stores the source, retrieval outcome and time, excerpt, evidence IDs, and rule version. Matches include a listing URL, a hash of the comparison text from the source, the score and distinctive phrase count. Findings confirm publication at the recorded time. Sender identity, individual offer terms and payment instructions require their own evidence. Payment concerns and conflicting evidence remain visible. Human evidence status remains separate, and rejecting or correcting a claim recalculates the findings.
+5. New cases run automatically. To backfill old completed cases or retry unavailable checks, run `python -m app.verify_vacancies` inside the configured API container. Append `--case-ref RC-...` for one case. The command retains prior findings and avoids duplicate evidence for unchanged input. An existing success is a dated snapshot. The command does not continuously monitor whether a job remains open.
+
+External-source coverage is limited to configured boards and the supplied material. Local corpus assertions, complaints, and claims beyond the published vacancy retain their own evidence and review requirements. These initial matching thresholds have regression tests but no independent accuracy estimate.

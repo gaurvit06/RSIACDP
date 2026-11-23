@@ -8,6 +8,7 @@ MAX_UPLOAD_BYTES_LIMIT = 50 * 1024 * 1024
 
 
 class Settings:
+    official_job_boards: str = os.getenv("OFFICIAL_JOB_BOARDS", "")
     app_environment: str = os.getenv("APP_ENV", "production").strip().lower()
     database_url: str = os.getenv("DATABASE_URL", "postgresql+psycopg://recruitment_intel:change-this-local-password@localhost:5432/recruitment_intel")
     jwt_secret: str = os.getenv("JWT_SECRET", "")

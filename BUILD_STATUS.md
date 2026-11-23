@@ -1,5 +1,187 @@
 # Build status
 
+## 2026-11-23 20:52 IST — Localhost release prepared for GitHub
+
+1. Collected the changes since `1c65cd2` on `codex/initial-platform`, including the investigation pipeline, trained model artifacts, migration, evaluation scripts and benchmark outputs, responsive frontend, localhost configuration, walkthrough files and docs. Captured the campaign walkthrough screenshot with a fictional account. Local credentials, live data, temporary builds and unrelated coursework are outside the commit.
+2. Checked the staged project snapshot. All 45 frontend tests passed. The isolated backend unit/API/worker/proxy test runner reported 266 passes and two skipped PostgreSQL-only checks. The staged paths passed a check for local credential values and common credential patterns. PDF fixtures are marked binary to preserve their exact bytes across checkouts.
+3. To compare the published revision, run `git rev-parse HEAD` and `git ls-remote origin refs/heads/codex/initial-platform`. For startup and private data recovery, see LOCALHOST.md.
+
+## 2026-11-23 06:04 IST — Storm Green and Vivid Cyan palette
+
+1. Applied the supplied palette to the shared frame, home, controls, case reader, evidence workspace and browser theme color. Updated workspace-theme.css, site-frame.css, public-desk.css, case-reading.css, evidence-workspace.css, style.css, index.html and DESIGN.md. Preserved semantic assessment colors.
+2. Rebuilt the local web container and verified health. All 45 frontend tests passed. Chromium compared sampled element positions and sizes before and after recoloring at 320, 375, 1024 and 1440px across the home and workspace routes. All measurements matched. Checked interactions and result badge labels/colors with synthetic cases. Storm Green text on Vivid Cyan buttons measured 10.70:1 contrast.
+3. Refresh http://localhost:5175/#home or http://localhost:5175/#cases. No outstanding steps for this color update.
+
+## 2026-11-23 06:00 IST — Template-based site layout
+
+1. Compared the free MIT editions of Tabler and CoreUI React. Used Tabler's boxed layout as a design reference for original React components. Recorded the references in DESIGN.md.
+2. SiteFrame.tsx and site-frame.css supply the common frame and full-width site header. Updated PublicDashboard, WorkspaceSidebar, App and the case, campaign, insights, graph, corpus and vacancy views to use the shared layout. Updated workspace-theme.css, public-desk.css, motion.css and main.tsx. The case list, case detail and every workspace section use one page heading pattern. Reflowed the public guide and case metrics into responsive cards.
+3. TypeScript/Vite build and localhost web health passed. All 45 frontend tests passed. Chromium checked header alignment, all workspace section headings, horizontal fit, intake and navigation at 320, 375, 1024 and 1440px. Tested sample walkthrough, sign-in controls, populated graph/corpus interactions, case details and role visibility using synthetic data. Fixed a clipped mobile menu button during visual review. Desktop and phone sidebar/dialog checks passed with motion enabled and reduced.
+4. Refresh http://localhost:5175/#cases or visit http://localhost:5175/#home. After shutdown use `pwsh -File scripts/local.ps1 -Action Start`. No outstanding steps for this layout change.
+
+## 2026-11-23 05:52 IST — Shared home and workspace theme
+
+1. Unified the public and private screens around the home palette and wordmark in CaseworkBrand.tsx, PublicDashboard.tsx, WorkspaceSidebar.tsx, workspace-theme.css and public-desk.css. Updated case-reading.css, evidence-workspace.css, motion.css, style.css, index.html and DESIGN.md. App.tsx now presents the case queue as labelled records on phones using the same data and controls.
+2. Built with TypeScript and Vite, rebuilt the local web service, and ran the frontend suite (45 passed). Chromium checked public/private branding, intake, case details and the workspace routes at 320, 375, 1024 and 1440 pixels. Additional browser checks covered graph and corpus interactions, sign-in and public walkthrough controls, role-specific reading views, sidebar and modal motion with reduced motion on/off, and model/evidence badge semantics. Private routes used synthetic records. Updated the local badge check to target the current evidence card. Visually reviewed desktop and mobile case queues and the evidence graph.
+3. Open http://localhost:5175/#home or http://localhost:5175/#cases. Refresh an existing tab for the new bundle. After shutdown use `pwsh -File scripts/local.ps1 -Action Start`. No outstanding steps for this theme change.
+
+## 2026-11-23 05:47 IST — Sample case button
+
+1. Replaced the public dashboard button's scroll-and-reset action with a native modal walkthrough in PublicDashboard.tsx and public-desk.css. Each launch starts at the offer. Back, next, finish, close and Escape work independently of the inline preview.
+2. Rebuilt the localhost web container. All 45 frontend tests passed. Chromium tested opening, all three stages, backtracking, both close controls, keyboard reopening, Escape, focus restoration and horizontal fit at 1280, 375 and 320 pixels. Also checked the launcher in a synthetic authenticated session.
+3. Open http://localhost:5175/#home and select **Explore a sample case**. Reload an already open tab to load the updated bundle. No pending work on this fix.
+
+## 2026-11-23 05:43 IST — Public Casework dashboard
+
+1. Added PublicDashboard.tsx and public-desk.css, with the project introduction, three-stage fictional case, and workflow overview. App.tsx opens at the public home and presents sign-in and recovery on demand. Removed the web sign-up form. The sidebar brand links home, signed-in users can reopen the workspace, and direct case links survive sign-in. Updated main.tsx, WorkspaceSidebar.tsx and LOCALHOST.md.
+2. Rebuilt the local web service and verified health. Ran 45 frontend tests (all passed). Chromium tested the live public dashboard at 1280, 375 and 320 pixels, including navigation, sample stages, correction dialog, password recovery controls and absence of case requests while signed out. A synthetic sign-in response verified the private case return route, workspace navigation and sign-out. No real credentials or personal records were used.
+3. Open http://localhost:5175/#home. After shutdown, resume with `pwsh -File scripts/local.ps1 -Action Start`. No pending steps for this change.
+
+## 2026-11-23 05:36 IST — Case detail reading layout
+
+1. Reworked App.tsx, CaseReading.tsx, case-reading.css and PostingPrediction.tsx. The overview pairs the case-level source explanation with the text model result. Five disclosures group findings and checks, extracted material, links, activity and review, and report exports. Existing callbacks handle mutations and downloads. No changes to stored case data or scoring.
+2. Rebuilt the web container for the existing local Compose project and verified web health. Ran `node --experimental-strip-types --test frontend/tests/*.test.ts` (45 passed). In Chromium, synthetic fixtures at 1280px and 375px verified the overview, each disclosure, source references, role-specific controls, evidence review dialog, export control visibility and overflow. Four desktop/mobile motion checks covered delayed loading, keyboard expansion, back navigation and reduced motion. Tests did not submit a live review or export private case data.
+3. Open http://localhost:5175/#cases/case/13. After a shutdown use `pwsh -File scripts/local.ps1 -Action Start`. No outstanding steps for this layout change.
+
+## 2026-11-23 05:23 IST — Case-detail motion
+
+Adjusted App.tsx and motion.css so case pages reveal when data arrives. Added a rotating disclosure chevron in CaseFindings.tsx and workspace-theme.css. PostingInsights.tsx now replays its results transition on group changes. Rebuilt the local web service. All 45 frontend tests passed. Chromium with synthetic data verified delayed case loading, keyboard expansion and return navigation at 375px and 1280px, with and without reduced motion. Existing sidebar, dialog, focus and scroll checks passed again. Open http://localhost:5175/#cases.
+
+## 2026-11-23 05:19 IST — Dashboard motion and localhost startup
+
+1. Added scoped transitions for navigation, drawer, dialogs, disclosures and controls. Updated App.tsx, WorkspaceSidebar.tsx, EvidenceCorpus.tsx and main.tsx with motion.css and DialogTransition.tsx. Dialog exits are inert and the system reduced-motion preference disables decorative animation.
+2. Started Docker Desktop and the existing local Compose project. Web, API, worker, PostgreSQL and Neo4j reported healthy. Frontend tests: 45 passed. Isolated Chromium with synthetic cases verified navigation, sidebar, dialog close/reopen, focus restoration, scroll and reduced motion at 1280px and 375px.
+3. Running at http://localhost:5175/#cases. Resume after a shutdown with `pwsh -File scripts/local.ps1 -Action Start`.
+
+## 2026-11-23 00:12 IST — Evidence and model decision colors
+
+Added shared labelled, icon-backed result badges to the cases table, case details, claims, campaigns and posting insights. Positive, risk, inconclusive and neutral states have separate colors. Updated Assessment.tsx, result-tone.ts and the associated views and styles. Local web build is healthy, all 45 frontend tests passed, and Chromium verified both table columns and the case detail with synthetic cases. No further steps for this change. Open http://localhost:5175/#cases.
+
+## 2026-11-23 00:07 IST — Bridgement-inspired visual redesign
+
+1. Measured the public homepage and theme stylesheet in Chromium. Four public design Markdown paths returned 404. Recorded the sampled hex values, type hierarchy, corner radii and Casework adaptations in DESIGN.md.
+2. Updated workspace-theme.css, style.css, evidence-workspace.css, main.tsx and index.html. Applied the navy sidebar, ivory reading surfaces, cobalt metric and graph panels, cyan details and raspberry actions. Bundled Inter and its OFL license in frontend/public/fonts/inter.
+3. Rebuilt the localhost web service. All 44 frontend tests passed. Chromium exercised the served production build with synthetic sessions at desktop and phone widths, including sign-in, intake, case detail, eight workspace sections, graph and corpus workflows. Inspected desktop and phone screenshots.
+4. Open http://localhost:5175/#cases. Resume after a shutdown with `pwsh -File scripts/local.ps1 -Action Start`. The local redesign is complete.
+
+## 2026-11-22 23:56 IST — Removed Casework dashboard entry point
+
+Removed the Casework breadcrumb from App.tsx and redirected old home URLs to Cases. Rebuilt the local frontend. All 44 frontend tests passed. Checked the old bookmark, sidebar, breadcrumb and browser Back in Chromium using a synthetic session. Ready at http://localhost:5175/#cases. Restart with `pwsh -File scripts/local.ps1 -Action Start`.
+
+## 2026-11-22 23:53 IST — Simplified Casework home
+
+Removed the duplicate dashboard cards and their CSS. Casework home and old home bookmarks open Recruitment cases. Updated App.tsx, dashboard-navigation.ts, workspace-theme.css and routing tests. Rebuilt the local web container. All 44 frontend tests passed. Verified the old home bookmark, sidebar navigation and home breadcrumb in Chromium with a synthetic session. This change is complete. Resume locally with `pwsh -File scripts/local.ps1 -Action Start`.
+
+## 2026-11-22 23:47 IST — Evidence graph and corpus navigation
+
+1. Replaced the workspace-wide list of graph nodes with a case picker and three branches: source checks, extracted details and related cases. Each record expands in place. Related cases show shared identifiers or recorded campaign links with their review status. Filters and identifier masking use the existing graph API.
+2. Changed the corpus landing page into a searchable source library with active and retired record filters. Add source opens a grouped form for the identifier, source and claim. Authority choices follow the existing API constraints. Reviewer retirement retains the reason and effect on earlier case findings.
+3. Implemented the UI in `frontend/src/EvidenceGraph.tsx`, `EvidenceCorpus.tsx` and `evidence-workspace.css`. Rebuilt the localhost web container. All 44 frontend tests passed. Tested the served production bundle in isolated Chromium at 1280px and 375px using synthetic API fixtures. Graph inspection, shared-case navigation, filters, corpus entry, search, retirement, investigator permissions and horizontal overflow checks passed at both sizes. Reviewed desktop graph and mobile library screenshots. The browser checks used simulated source writes.
+4. Open `http://localhost:5175/#evidence-graph` or `http://localhost:5175/#evidence-corpus`. To restart local services, run `pwsh -File scripts/local.ps1 -Action Start`. No remaining work for this UI change.
+
+## 2026-11-22 23:33 IST — Dashboard navigation
+
+1. Added role-aware dashboard URLs in `frontend/src/dashboard-navigation.ts`. The Casework breadcrumb opens a workspace directory. Each section breadcrumb returns to its dashboard and resets its filters. Case details preserve the originating dashboard in the URL and support Back, Forward and refresh.
+2. Updated `frontend/src/App.tsx`, `WorkspaceSidebar.tsx` and `workspace-theme.css` with shared destinations, native breadcrumb links and keyboard/touch styling. Existing sidebar role rules still apply.
+3. Rebuilt the localhost web container. All 44 frontend tests passed, including new route, role and invalid-link regressions. Executed the production JavaScript from localhost in a simulated DOM with a synthetic reviewer and case. Clicks passed for all eight workspace dashboard links, both crumbs from a case, and Back from Campaigns. The live signed-in browser tab was unavailable for a visual check.
+4. No further implementation is pending for this navigation change. Open http://localhost:5175/#casework to use the overview. After a service restart, use `pwsh -File scripts/local.ps1 -Action Start`.
+
+## 2026-11-22 23:03 IST — Automatic vacancy evidence verification on localhost
+
+1. Implemented the versioned TF-IDF employer-board verifier in `backend/app/vacancy_verification.py`. The worker stores provenance and leaves human review status untouched. The findings engine, correction paths, report serializer and graph synchronization use the persisted results. The case view now links to the employer's public listing.
+2. Checked employer ownership and reachability for Canonical and Figma, enabled both boards in `compose.local.yaml`, and updated the intake privacy notice. Private submission text is compared locally. The Hiring Market logistic regression remains the separate fraud-risk classifier.
+3. Rebuilt and started the local stack. Ran `python -m app.verify_vacancies` in the API container against 13 completed cases. Case `RC-12A70B3E` matched Canonical posting 5143074 with cosine 0.956 and 468 distinctive shared trigrams. The stored board evidence was unreviewed by humans. Repeating the backfill for this case updated zero records.
+4. Executed the offline backend suite with `python run_ci_tests.py`: 266 passed, 2 optional PostgreSQL concurrency tests skipped. All 41 frontend tests passed. The API/worker integration test covers submission, automatic confirmation, redacted report citation and a copied real listing with a fee demand retaining an overall concern. Tested no-results, unavailable feeds, titles alone, shared boilerplate, conflicting evidence and rejected extractions.
+5. Resume with `pwsh -File scripts/local.ps1 -Action Start`. Open `http://localhost:5175/` and view the Canonical case under Findings by claim. See the README for enabling other verified employer boards. Historical snapshots do not guarantee current availability. Verification performance on independent labelled cases is still unevaluated.
+
+## 2026-11-22 22:31 IST — Hiring-market classifier active on localhost
+
+1. Exported the supplied dashboard vectorizer, logistic-regression intercept, coefficients and ordered numeric inputs into a data-only artifact. Casework uses the dashboard’s 0.35 cutoff and its ten numeric inputs, with the existing three-recognized-word intake minimum. Guided intake now records salary disclosure and logo presence. Updated the worker scoring path, case screen, report wording and reproducibility documentation.
+2. Compared scores with the original dashboard prediction function using identical form inputs from 500 sampled postings. All decisions agreed, with a maximum absolute score difference of 6.66e-16. This verifies implementation agreement; independent predictive accuracy remains unmeasured.
+3. Rebuilt the local API, worker and web services. All nine completed cases have persisted predictions from the replacement version and corresponding audit events. A repeat update changed zero cases. Verified the served frontend asset and live database model versions.
+4. Backend suite passed 261 tests with two optional PostgreSQL concurrency checks skipped. All 41 frontend tests passed. To resume, run `pwsh -File scripts/local.ps1 -Action Start` and open http://localhost:5175/.
+
+## 2026-11-22 18:54 IST — Three reference classifiers on loopback
+
+1. The comparison page is http://localhost:5178/. The original Flask form runs at port 5176 with its supplied forest and vectorizer. The Streamlit dashboard at port 5177 uses its supplied logistic-regression weights and its bundled CSV. A local copy redirects the dashboard dataset loader to the CSV to avoid waiting for external services. Both Downloads folders remain intact.
+2. The Nishant-404 repository at revision `5f1bf268327b127dd33e38718f64c8bed73bf5d0` contained no trained weights. Trained its class-balanced logistic-regression option on the 14,589-row training split, using its text preprocessing, feature extractor and prediction class. The text-only service on port 5178 uses this local artifact. It has no accuracy estimate from this hosting check.
+3. Submitted a synthetic software-engineer offer through the Flask endpoint, the Streamlit Job Checker in Edge and the Nishant form. All returned model results. Also verified all three pages, launcher-page links and Casework on port 5175. The production Casework classifier was not changed.
+4. Restart these installed localhost references with `pwsh -File scripts/reference_models/start.ps1` from the repository root. The launcher relies on the two supplied Downloads environments, the local Nishant checkout, environment and trained weights under `.local`. To retrain the third model in that environment, run `.local/nishant-env/Scripts/python.exe scripts/reference_models/nishant.py --train "C:/Users/gaurv/OneDrive/Desktop/archive/fake_job_postings.csv"`.
+
+## 2026-11-22 18:39 IST — Three-word posting minimum
+
+Changed the exported classifier and training configuration to score three distinct recognized words, updated the case view and README, and added boundary tests. Checked recognition, repetition, unknown words and the 0.50 decision threshold. Both classifier tests passed. Rescored the 3,291 held-out rows and updated the model metrics. One additional row received a score, with the same flagging confusion matrix. Rebuilt the local services and verified the running worker at two and three words. No existing completed cases met the criteria for rescoring. Resume locally with `pwsh -File scripts/local.ps1 -Action Start`.
+
+## 2026-11-22 18:32 IST — Sidebar scrolling and repaint
+
+1. Replaced the fixed desktop sidebar and matching main margin with adjacent grid columns in `frontend/src/style.css` and `frontend/src/workspace-theme.css`. The desktop case pane scrolls on an opaque canvas. The mobile menu uses normal document scrolling.
+2. Checked the production bundle in Edge with 100 synthetic cases. Sidebar screenshots stayed stable within a three-level per-channel color tolerance while the case list scrolled, across four collapse/expand cycles. Confirmed adjacent column boundaries and mobile menu selection and scrolling. The exact artifact on the user's display was not independently reproduced.
+3. All 41 frontend tests passed. The rebuilt web service is healthy and the CSS served by localhost matches the tested bundle byte for byte. Refresh http://localhost:5175/ to use it.
+
+## 2026-11-22 18:24 IST — Trained classifier integrated into localhost
+
+1. Trained TF-IDF and class-balanced logistic regression on 14,589 postings. Exported a local inference artifact and compared its scores with scikit-learn on held-out classifiable text. The common test fold had 3,291 rows, 119 correct flags, 35 false flags, 46 missed positives and one abstention. See `backend/evaluation/posting_model_metrics.json` and the README for reproduction and dataset limitations.
+2. Updated the worker, case model, Alembic migration, case API, report renderer, React case list/detail and filters. Predictions carry the model version and are audited. URL-only or sparse submissions request more text. The evidence assessment can disagree with the model. Training and inference use the same text normalization. The CSV evaluation runner now counts the model decision and exports the independent evidence assessment.
+3. Rebuilt the three local app services, ran the migration, verified the served frontend bundle and database, and backfilled nine completed cases (six higher risk, three lower risk). A repeat backfill updated zero cases. All five services were healthy.
+4. The isolated backend checks passed 259 tests; two optional PostgreSQL concurrency tests skipped without a dedicated concurrency-test URL. All 41 frontend checks passed. API integration tests exercised intake, processing, versioned predictions and redacted JSON and Markdown exports. Initial test execution lacked a writable directory for two baseline tests; the successful run supplied an isolated writable test directory.
+5. To resume, use `pwsh -File scripts/local.ps1 -Action Start` and open the Cases page. Independent dated evaluation on Indian recruitment offers remains outstanding.
+
+## 2026-11-22 18:09 IST — Labelled job-posting benchmark
+
+1. Added an isolated CSV evaluation runner in `backend/evaluation/run_postings_csv.py` and repeat commands in `backend/evaluation/README.md`. Ran the case-creation handler and worker on 17,880 postings without loading data into the live workspace. All 17,880 returned insufficient evidence. Two independent synthetic controls exercised the positive and negated fee paths.
+2. Ran a separate TF-IDF/logistic-regression baseline. On the common 3,291-row held-out set it flagged 118 of 165 fraud-labelled rows and 40 of 3,126 other rows. Verified all IDs, source labels, file hashes, split memberships and confusion counts. Results and row-level outputs are in `output/postings-benchmark`.
+3. To resume this evaluation, rerun the two commands in the evaluation README with the original CSV. Assessing real-world evidence accuracy and campaign linking still requires dated, independently annotated source and campaign data.
+
+## 2026-11-22 17:38 IST — Local theme, sidebar and vacancy walkthrough
+
+1. Updated the React workspace with a charcoal-green canvas, rounded panels and form controls, and distinct colors for evidence, warnings and errors. The sidebar uses an icon rail on desktop and a disclosure menu on mobile. Only the desktop layout preference is saved in browser storage. Components changed include `App.tsx`, `WorkspaceSidebar.tsx`, `main.tsx`, `style.css`, `entity-review.css` and `workspace-theme.css`.
+2. Added the signed-in vacancy walkthrough in `VacancyWalkthrough.tsx`, its JL-204 training message and the locally served training source. Open http://localhost:5175/#vacancy-demo to review a synthetic vacancy through intake, evidence review and case connections. Source confirmation applies to the specific matched claim.
+3. The production frontend build passed. All 40 existing frontend tests passed. An isolated React DOM interaction check passed for collapse, expand, reload persistence, accessible icon navigation, menu dismissal on selection and Escape, focus restoration, resize and sign-out. HTTP checks verified the served CSS, JS and training file. All five Compose services reported healthy. Direct visual inspection in the in-app browser was unavailable.
+4. To resume, run `pwsh -File scripts/local.ps1 -Action Start` at the repository root and open http://localhost:5175/. The remaining visual check is to inspect the expanded and compact layouts in the user's browser.
+
+## 2026-11-22 12:29 IST — Guided postings and posting insights
+
+1. Adapted the Flask reference project's structured submission fields to the consented case workflow. Choose New case → Material type → Job posting (guided form). The app saves the supplied fields and description as one traceable text submission with the posting input kind. Investigators can inspect it under Submitted job posting. Industry and employment type now have labelled extraction rules and source spans.
+2. Adapted the Streamlit reference project's geographic and industry breakdowns to actual workspace cases. Posting insights groups the latest 200 cases by location, industry, role or employment type. Each bar counts distinct cases and opens the case list. Rejected extractions are excluded. The confirmed-only filter and missing-value row expose coverage. Access follows the investigator, reviewer and administrator roles.
+3. Changed the frontend intake and navigation, added `posting.ts`, `PostingInsights.tsx`, display labels, styles and tests. Backend changes cover intake schema, labelled extraction and an HTTP/worker regression including analyst redaction. No external models or datasets are required.
+4. Ran `node --experimental-strip-types --test tests/*.test.ts` in frontend (40 passed). Ran `python run_ci_tests.py` with a network-isolated backend container (239 unit tests passed, two opt-in tests skipped, 16 API-flow tests, one inline-worker test and two proxy tests passed). Rendered empty and populated dashboard components. Built API, worker and web images, verified five healthy local services and checked the active web bundle for the new controls.
+5. Resume by refreshing localhost:5175 and opening New case or Posting insights. Existing cases participate using their saved extractions. Locations and industries are claims from submitted postings. The live browser preview was unavailable, so visual interaction in this chat remains unverified.
+
+## 2026-11-22 12:21 IST — Case desk and investigator interface
+
+1. Reviewed the Flask posting form and the Streamlit hiring dashboard from the two supplied downloads. Adapted posting-field search and assessment filtering to the authenticated React desk using the returned case records.
+2. Updated `frontend/src/App.tsx`, `style.css`, `case-display.ts`, `CampaignResults.tsx` and `CaseFindings.tsx`. Campaigns show case titles, references, strength and review status first. Expand “How matching works” for thresholds and weights or a relationship for its historical rule and supporting evidence. Case pages put source references and extraction notes in disclosures. The graph uses readable filter labels. The queue supports keyboard-accessible case links, combined searches and a clear-filters action.
+3. Added posting-field search and display-label regression checks. All 38 frontend tests passed. Production web image built. Server-rendered component checks covered campaign loading, empty and populated states, collapsed rule metadata, visible case references and source details. All five Compose services reported healthy. Verified the live web server returned the rebuilt JavaScript containing the new controls.
+4. The live browser preview was unavailable to this chat, so desktop/mobile visual inspection is pending. To resume, open localhost:5175, refresh, inspect Campaigns and expand a link, then try a case search combined with an assessment filter. Start the saved local stack with `pwsh -File scripts/local.ps1` if needed.
+
+## 2026-11-22 12:13 IST — Recruitment-payment findings on localhost
+
+1. Confirmed the reported behavior in PostgreSQL. All nine completed cases had the same assessment. The extractor retained payment amounts but the decision engine assessed only external or corpus identifier matches.
+2. Added a versioned submitted-material rule in `backend/app/payment_signals.py` and `findings.py`, corrected whitespace handling in `extract.py`, and updated worker audit metadata. A qualifying fee request must overlap a persisted extraction and cite an eligible original evidence item. Rejection of the matching extraction or marking the submission irrelevant suppresses the signal. The authoritative-source rule still requires reviewed provenance. The case detail now shows the persisted overall explanation.
+3. Built local API, worker and web images, started the stack and verified HTTP readiness. Ran `python -m app.reassess_cases` inside the local API container. Nine completed cases received a new finding snapshot, preserving review decisions and history. Six now show evidence supports concern and three show insufficient evidence. A second run updated zero. Example RC-4B9B87AC cites submission #33.
+4. Ran the backend harness with a disposable SQLite database, disabled network and a writable temporary baseline-fixture directory. 239 unit tests passed, two opt-in tests skipped, and all 18 isolated integration tests passed. The first attempt had two harness errors writing baseline fixtures on a read-only mount. All 36 frontend tests passed and the production web image built. Synthetic regressions include the refundable equipment deposit example, zero fees, negation, employer-paid fees, salary and review withdrawal.
+5. Remaining verification for this change is a visual check of the refreshed case screen. Local browser access was unavailable at the final check. To resume, run `pwsh -File scripts/local.ps1 -Action Status`, open localhost:5175 and inspect RC-4B9B87AC. These bounded English-language rules have not been measured against independent real cases.
+
+## 2026-11-22 — Local origin and walkthrough materials
+
+- Applied the local Compose override for the documented localhost web origin in the API and worker, and the same-origin frontend build setting. Ran the normal startup script. All five services were healthy and the website, proxy and database readiness checks passed.
+- Added five fictional intake samples under `demo/` and linked them from `FEATURE_WALKTHROUGH.md`. Checked PDF text extraction and real OCR for the example address. The initial scan inserted a space in the identifier. Changed the demo document typography and verified the complete address in both the PNG and the raster-only PDF. The application still requires human review of OCR.
+- Retried the requested live browser walkthrough. The browser reported a saved permission or managed-policy denial before it could read the tab. No live UI steps were verified in this attempt. The official desktop guide identifies Settings > Browser > Agent permissions for site exceptions. The Help Center describes chat-specific denials and advises keeping the original chat and opening the site in a new chat if an updated setting does not take effect. Resume with these steps and the linked feature walkthrough.
+
+## 2026-11-22 02:24 IST — Localhost recovery and operational verification
+
+- Browser follow-up: page observation was denied by the localhost origin permission. After the user explicitly approved the live walkthrough, a second attempt still returned a saved-permission/managed-policy denial. No alternate browser or automation route was attempted. `FEATURE_WALKTHROUGH.md` now maps UI and operational demonstrations to expected observations; live steps remain pending until that saved setting permits access.
+
+- Current scope: user requested reliable localhost operation, without hosted deployment. A new active goal records that scope. User also requested a demonstration of every application feature after fixes; this is still pending.
+- Started from tracked revision `1c65cd2`. Existing untracked `.build-morgan/`, `output/`, and `tmp/` contain unrelated work and were left untouched. Docker was stopped, the old temporary configuration had disappeared, and the system drive had about 59 GB free.
+- Started Docker Desktop, recovered only this application's saved container environment into Git-ignored `.local/compose.env` without printing credentials, and recorded its existing project identity in `.local/state.json`. Reused the existing PostgreSQL/Neo4j/upload volumes, preserving accounts and cases.
+- Added `scripts/local.ps1`, `compose.local.yaml`, and `LOCALHOST.md`. Updated `.gitignore`, README and BUILD_PLAN. Normal startup now uses persisted configuration, existing images, loopback ports 5175/8001, restart policies, service health checks, database readiness, frontend HTTP and frontend-to-API verification. Stop preserves volumes. No cloud changes or Git push were made.
+- Actual checks: startup script syntax and execution passed; all five working services healthy; website and proxied API returned 200; real Tesseract image and scanned-PDF extraction/region mapping passed; frontend suite passed 35/35. Network-isolated backend harness passed 238 unit tests (2 opt-in PostgreSQL skips), 15 API-flow tests, 1 inline-worker lifespan test and 2 proxy tests. Log: `.local/backend-check.log` (ignored).
+- Created separate disposable project `rsiacdp-check-20261122`, subnet 172.31.206.0/24, API 8002/web 5176, with synthetic credentials and no external providers. E2E passed investigator registration, consented PostgreSQL text/PDF intake, worker processing, source spans, neutral corpus results, deterministic campaign lead, masked Neo4j graph, redacted report, protected correction tracking, actual entity correction, findings/link recalculation and audit timeline. Neo4j outage/fallback/recovery passed. Synthetic cases: RC-37B4C853, RC-C35729EC, RC-2651D609.
+- Encrypted backup/restore passed on that disposable project: authenticated manifest key fingerprint, original row recovered after deliberate mutation, one encrypted private upload retained, graph rebuilt for three cases, API readiness 200. It did not operate on the user's working database. Stopped the verification stack afterward without deleting volumes. Main localhost app remains healthy at http://localhost:5175/.
+- Remaining: browser walkthrough of every UI feature and role, cookie-session behavior, responsive interaction, and any resulting fixes. Automated passes do not establish that every UI control works. No claim of universal bug freedom or real-world scam accuracy. Synthetic evidence must remain labelled.
+- Resume: read this entry and `LOCALHOST.md`, inspect Git status, run `pwsh -File scripts/local.ps1 -Action Status`. Continue with a feature inventory and synthetic browser demonstration; preserve existing user cases. Verification environment is `.local/verification-20261122/{compose.env,override.yaml}` and is stopped. Do not run destructive recovery tests on the working project. No secrets belong in reports or commits.
+
 ## 2026-11-03 20:17 (Asia/Calcutta) — Make keyboard focus visible across the interface
 
 ### Completed in this stage

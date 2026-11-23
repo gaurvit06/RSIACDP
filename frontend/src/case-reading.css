@@ -1,0 +1,64 @@
+.case-reading {
+  width: min(100%, 68rem);
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.case-reading .back-link { display: inline-flex; align-items: center; gap: .4rem; }
+.reading-header { margin: .5rem 0 1.4rem; }
+.reading-header h1 { margin: .45rem 0; color: var(--heading); font-size: clamp(1.55rem, 3vw, 2.25rem); letter-spacing: -.04em; line-height: 1.14; }
+.reading-header p, .reading-meta { margin: 0; color: var(--muted); font-size: .82rem; }
+.reading-meta, .reading-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.reading-meta .case-reference { margin: 0; }
+.reading-overview { display: grid; grid-template-columns: 1.15fr 1fr; gap: .85rem; margin: 1rem 0 1.25rem; align-items: start; }
+.reading-card, .reading-section { min-width: 0; border: 1px solid var(--border); background: var(--surface); border-radius: 16px; }
+.reading-card { padding: clamp(1rem, 2vw, 1.45rem); border-top: 3px solid var(--accent); }
+.reading-model { border-top-color: var(--vivid-cyan); }
+.reading-card h2, .reading-body h3 { color: var(--heading); font-size: 1.02rem; }
+.reading-card h2 { margin: 0 0 .85rem; display: flex; align-items: center; gap: .5rem; }
+.reading-card h2 svg { color: var(--accent); flex: none; }
+.case-reading .reading-card .assessment { font-size: .87rem; white-space: normal; padding: .32rem .55rem; }
+.reading-card p, .reading-body p, .record-body dd { max-width: 72ch; color: var(--secondary); font-size: .89rem; line-height: 1.55; }
+.reading-card p { margin: .7rem 0; }
+.reading-jump, .model-method > summary { font: 600 .82rem/1.5 var(--font-ui); color: var(--accent); cursor: pointer; }
+.reading-jump { padding: .3rem 0; background: transparent; border: 0; display: inline-flex; gap: .3rem; align-items: center; }
+.model-method { padding: .3rem 0; }
+.reading-section > summary:hover, .reading-record > summary:hover { background: var(--inset); }
+.reading-sections { display: grid; gap: .55rem; }
+.reading-section { scroll-margin-top: 5rem; }
+.reading-section > summary { list-style: none; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .85rem; padding: .85rem 1.1rem; border-radius: inherit; cursor: pointer; }
+.reading-section > summary::-webkit-details-marker { display: none; }
+.reading-icon { width: 2.35rem; height: 2.35rem; border-radius: 10px; background: var(--selected); color: var(--accent); display: grid; place-items: center; }
+.reading-section > summary strong, .reading-section > summary small { display: block; }
+.reading-section > summary strong { color: var(--heading); font-size: .95rem; }
+.reading-section > summary small, .reading-record > summary span, .model-method small { color: var(--muted); font-size: .78rem; line-height: 1.45; }
+.reading-section > summary small { margin-top: .16rem; }
+.reading-chevron { color: var(--muted); }
+.reading-section[open] > summary .reading-chevron { transform: rotate(90deg); }
+.reading-body { border-top: 1px solid var(--border); padding: 1rem; }
+.reading-body > :first-child { margin-top: 0; }
+.reading-body .panel { margin: 0 0 .75rem; padding: .75rem; box-shadow: none; }
+.reading-body .timeline { padding-block: .4rem; }
+.reading-body .claim-body, .reading-record .record-body { line-height: 1.55; }
+.reading-record { border: 1px solid var(--border); border-radius: 10px; margin: .45rem 0; }
+.reading-record > summary { cursor: pointer; padding: .7rem .85rem; border-radius: inherit; color: var(--heading); font-size: .86rem; }
+.reading-record > summary span { margin-left: .6rem; }
+.record-body { padding: .8rem .95rem; }
+.record-body > p:first-child { margin-top: 0; }
+.record-body dl { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .8rem; margin: .65rem 0; }
+.record-body dt { font-weight: 600; font-size: .8rem; color: var(--secondary); }
+.record-body dd { margin: 0; min-width: 0; }
+.record-body blockquote { margin: .5rem 0; padding: .6rem .85rem; border-inline-start: 3px solid var(--vivid-cyan); background: var(--inset); font-size: .88rem; }
+.reading-actions { margin-top: .65rem; }
+.case-reading summary:focus-visible, .reading-jump:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .reading-chevron { transition: transform 150ms ease; }
+}
+@media (max-width: 760px) {
+  .reading-overview { grid-template-columns: 1fr; gap: .6rem; }
+  .reading-section > summary { padding: .8rem; gap: .6rem; }
+  .reading-body { padding: .75rem; }
+  .record-body dl { grid-template-columns: 1fr; }
+  .record-body dt:not(:first-child) { margin-top: .35rem; }
+}
+.reading-overview { align-items: stretch; }
+.case-reading .reading-card .modal-warning { display: block; color: var(--warn); }

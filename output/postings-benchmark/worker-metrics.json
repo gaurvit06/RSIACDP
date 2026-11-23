@@ -1,0 +1,46 @@
+{
+  "dataset_sha256": "59253295129d8b6a27607f9904f7d4ddf4dbb0ee35e079c7eb51b58b5e62bf60",
+  "label_counts": {
+    "0": 17014,
+    "1": 866
+  },
+  "all_rows": {
+    "n": 17880,
+    "tp": 0,
+    "fp": 0,
+    "fn": 866,
+    "tn": 17014,
+    "precision": null,
+    "recall": 0.0,
+    "f1": 0.0,
+    "fpr": 0.0
+  },
+  "india": {
+    "n": 276,
+    "tp": 0,
+    "fp": 0,
+    "fn": 4,
+    "tn": 272,
+    "precision": null,
+    "recall": 0.0,
+    "f1": 0.0,
+    "fpr": 0.0
+  },
+  "assessments": {
+    "Insufficient evidence": 17880
+  },
+  "total_entities": 88884,
+  "worker_ms_p50": 29.4025,
+  "worker_ms_p95": 49.812,
+  "holdout": {
+    "n": 3291,
+    "tp": 0,
+    "fp": 0,
+    "fn": 165,
+    "tn": 3126,
+    "precision": null,
+    "recall": 0.0,
+    "f1": 0.0,
+    "fpr": 0.0
+  }
+}

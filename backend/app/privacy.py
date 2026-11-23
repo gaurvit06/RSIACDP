@@ -38,8 +38,10 @@ def _mask_contact_patterns(value: str) -> str:
     return value
 
 
-def redact_source_ref(value: str) -> str:
+def redact_source_ref(value: str, source_type: str = "") -> str:
     """Preserve a traceable web origin while hiding paths, queries, and embedded contacts."""
+    if source_type == "official_employer_board" and re.fullmatch(r"https://job-boards\.greenhouse\.io/[a-z0-9_-]{1,80}/jobs/[0-9]+", value):
+        return value
     try:
         parsed = urlsplit(value)
         if parsed.scheme.lower() in {"http", "https"} and parsed.hostname:

@@ -48,6 +48,76 @@ class CaseFlowTests(unittest.TestCase):
         engine.dispose()
         shutil.rmtree(TEST_ROOT, ignore_errors=True)
 
+    def test_structured_posting_is_persisted_extracted_and_masked(self):
+        with SessionLocal() as db:
+            investigator = User(email="posting-investigator@example.invalid", password_hash="test", role="investigator")
+            analyst = User(email="posting-analyst@example.invalid", password_hash="test", role="analyst")
+            db.add_all([investigator, analyst])
+            db.commit()
+            headers = {"Authorization": f"Bearer {create_token(investigator)}"}
+            masked_headers = {"Authorization": f"Bearer {create_token(analyst)}"}
+        material = "Job title: Technician\nLocation: Pune\nIndustry: Test manufacturing\nEmployment type: Contract\nBenefits: Transit pass\nJob description:\nMaintain and test equipment with the engineering team."
+        created = self.client.post("/api/cases", headers=headers, json={
+            "title": "Synthetic structured offer", "input_kind": "posting", "submitted_text": material,
+            "consent_version": "consent-v2", "consent": True,
+        })
+        self.assertEqual(created.status_code, 200, created.text)
+        case_id = created.json()["id"]
+        with SessionLocal() as db:
+            process_job(db, db.scalar(select(ProcessingJob).where(ProcessingJob.case_id == case_id)))
+        case = self.client.get(f"/api/cases/{case_id}", headers=headers).json()
+        self.assertEqual(case["status"], "completed")
+        self.assertEqual(case["submitted_text"], material)
+        decision = case["posting_prediction"]
+        self.assertIn(decision["label"], {"Higher fraud risk", "Lower fraud risk"})
+        self.assertTrue(decision["model_version"].startswith("hiring-market-lr-v1-"))
+        self.assertIsInstance(decision["score"], float)
+        exported = self.client.get(f"/api/cases/{case_id}/report", headers=masked_headers)
+        self.assertEqual(exported.json()["posting_prediction"], decision)
+        markdown = self.client.get(f"/api/cases/{case_id}/report?format=markdown", headers=masked_headers)
+        self.assertIn(decision["label"], markdown.text)
+        self.assertIn(decision["model_version"], markdown.text)
+        for kind, expected in (("industry_claim", "Test manufacturing"), ("employment_type_claim", "Contract")):
+            entity = next(e for e in case["entities"] if e["type"] == kind)
+            self.assertEqual(material[entity["source_start_char"]:entity["source_end_char"]], expected)
+        restricted = self.client.get(f"/api/cases/{case_id}", headers=masked_headers)
+        self.assertEqual(restricted.status_code, 200)
+        self.assertNotIn("submitted_text", restricted.json())
+        self.assertNotIn("Test manufacturing", restricted.text)
+
+    def test_worker_automatically_verifies_listing_but_preserves_payment_concern(self):
+        from app.vacancy_verification import index_jobs
+
+        body = ("Inspect thermal probes inside precision vacuum chambers and document repeatable "
+                "calibration procedures. Coordinate independent trials with designated technicians "
+                "and publish instrument specifications for the manufacturing department. ") * 8
+        board = index_jobs({"jobs": [{"id": 144, "title": "Instrument Designer", "content": body}]})
+        with SessionLocal() as db:
+            user = User(email="board-test@example.invalid", password_hash="test", role="investigator")
+            db.add(user)
+            db.commit()
+            headers = {"Authorization": f"Bearer {create_token(user)}"}
+        for fee in ("", "Registration fee: INR 4999."):
+            text = f"Company: Example\nJob title: Instrument Designer\n{body}\n{fee}"
+            response = self.client.post("/api/cases", headers=headers, json={
+                "title": "Synthetic verification test", "input_kind": "text", "submitted_text": text,
+                "consent_version": "consent-v2", "consent": True,
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            case_id = response.json()["id"]
+            with SessionLocal() as db, patch.object(settings, "official_job_boards", "Example=example"), patch(
+                "app.vacancy_verification.board_index", return_value=(board, utcnow())
+            ):
+                process_job(db, db.scalar(select(ProcessingJob).where(ProcessingJob.case_id == case_id)))
+            case = self.client.get(f"/api/cases/{case_id}", headers=headers).json()
+            self.assertEqual(case["status"], "completed")
+            self.assertEqual(case["assessment"], "Evidence supports concern" if fee else "Confirmed by an authoritative source")
+            vacancy = next(f for f in case["findings"] if f["scope"] == "vacancy")
+            self.assertEqual(vacancy["assessment"], "Confirmed by an authoritative source")
+            report = self.client.get(f"/api/cases/{case_id}/report", headers=headers)
+            self.assertEqual(report.status_code, 200)
+            self.assertIn("https://job-boards.greenhouse.io/example/jobs/144", report.text)
+
     def test_z_cookie_session_is_http_only_csrf_protected_and_revoked(self):
         # The registration-limit test intentionally leaves its shared test-client
         # address throttled. Start this independent auth-flow test with a clean bucket.
@@ -188,7 +258,10 @@ class CaseFlowTests(unittest.TestCase):
         self.assertIn("Synthetic test registry", [evidence["source_name"] for evidence in detail["evidence"]])
         self.assertEqual(detail["assessment"], "Insufficient evidence")
         corpus_evidence = next(item for item in detail["evidence"] if item["source_name"] == "Synthetic test registry")
-        evidence_review = self.client.post(f"/api/cases/{case_id}/evidence/{corpus_evidence['id']}/review", headers=investigator_headers, json={"status": "relevant", "rationale": "The local fixture supports only the identifier observation."})
+        with patch("app.main.enqueue_graph_sync", wraps=enqueue_graph_sync) as queue_graph:
+            evidence_review = self.client.post(f"/api/cases/{case_id}/evidence/{corpus_evidence['id']}/review", headers=investigator_headers, json={"status": "relevant", "rationale": "The local fixture supports only the identifier observation."})
+            self.assertEqual(queue_graph.call_count, 1)
+            self.assertEqual(queue_graph.call_args.args[1], case_id)
         self.assertEqual(evidence_review.status_code, 200, evidence_review.text)
         self.assertEqual(evidence_review.json()["review_status"], "relevant")
         still_unconfirmed = self.client.get(f"/api/cases/{case_id}", headers=investigator_headers).json()

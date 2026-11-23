@@ -10,7 +10,7 @@
 .entity-meta small {
   display: block;
   min-width: 0;
-  color: #849087;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -29,7 +29,7 @@
   margin: 0;
   padding: 3px 6px;
   border-radius: 999px;
-  background: #f8f5eb;
+  background: var(--warn-bg);
   line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;

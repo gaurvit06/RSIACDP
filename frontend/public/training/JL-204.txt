@@ -1,0 +1,10 @@
+SYNTHETIC TRAINING FIXTURE — fictional employer careers register
+Publisher: Juniper Loom Training Company (fictional)
+Record: JL-204
+Record type: vacancy listing
+Job title: Junior Data Analyst
+Location: Pune
+Employment type: Full-time
+Recruitment contact for JL-204: careers@juniper-loom.invalid
+The employer does not charge applicants a recruitment fee.
+This example record contains no candidate-specific appointment or offer letter.

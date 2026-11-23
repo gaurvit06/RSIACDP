@@ -31,7 +31,7 @@ class PasswordResetConsumeRequest(BaseModel):
 
 class CaseCreate(BaseModel):
     title: str = Field(min_length=3, max_length=240)
-    input_kind: str = Field(pattern="^(text|url|email|message)$")
+    input_kind: str = Field(pattern="^(text|url|email|message|posting)$")
     submitted_text: str = Field(min_length=1, max_length=100000)
     consent_version: str = Field(min_length=1, max_length=40)
     consent: bool

@@ -58,6 +58,8 @@ BANK_ACCOUNT_PATTERN = re.compile(
 )
 
 LABELLED_CLAIMS = {
+    "industry_claim": re.compile(r"(?im)^[ \t]*industry[ \t]*:[ \t]*([^\r\n]{2,120})$"),
+    "employment_type_claim": re.compile(r"(?im)^[ \t]*employment type[ \t]*:[ \t]*([^\r\n]{2,120})$"),
     "company_claim": re.compile(r"(?im)^\s*(?:company(?:\s+name)?|organization(?:\s+name)?|employer|hiring\s+company)\s*[:\-]\s*([^\r\n]{2,120})"),
     "job_title_claim": re.compile(r"(?im)^\s*(?:job\s*(?:title|role|opening|vacancy)?|position|role|designation|vacancy|opening)\s*[:\-]\s*([^\r\n]{2,120})"),
     "recruiter_claim": re.compile(r"(?im)^\s*(?:recruiter(?:\s+name)?|hr\s*(?:contact|name)|contact\s*(?:person|name)|hiring\s+manager)\s*[:\-]\s*([^\r\n]{2,120})"),
@@ -181,8 +183,7 @@ def extract(text: str) -> list[Extracted]:
         # a neighboring sentence cannot turn a fee mention into a request.
         left, right = _clause_bounds(text, match.start(), clause_boundaries)
         sentence = text[left:right].strip()
-        term_start, term_end = match.start() - left, match.end() - left
-        before, after = sentence[:term_start], sentence[term_end:]
+        before, after = text[left:match.start()], text[match.end():right]
         if FEE_NEGATION_PATTERN.search(sentence):
             continue
         if not (FEE_PAYMENT_BEFORE_PATTERN.search(before) or FEE_REQUIREMENT_AFTER_PATTERN.search(after)):

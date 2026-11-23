@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recruitment model comparison</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 system-ui,sans-serif;background:#202a29;color:#edf3ed}
+body{max-width:57rem;margin:auto;padding:clamp(1rem,5vw,4rem)}h1{font-size:clamp(1.9rem,5vw,3rem);line-height:1.1;margin:12px 0 28px}h2{font-size:1.25rem;margin:0}
+nav,section{border:1px solid #4a5e56;border-radius:16px;background:#2a3733;padding:clamp(1rem,3vw,2rem);margin:16px 0}
+nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}nav a{display:block}a{color:#c3e3b5}
+small{display:block;color:#c1cec5}label{display:block;margin:18px 0 5px}textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #62736a;border-radius:10px;background:#1f2926;color:inherit;font:inherit}
+button{font:inherit;font-weight:650;background:#c3e3b5;color:#15291f;border:0;padding:9px 16px;border-radius:10px;cursor:pointer;margin-top:12px}
+output{display:block;margin-top:15px;font-weight:650}output:empty{display:none}a:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #c3e3b5;outline-offset:3px}
+</style></head><body><main>
+<a href="http://localhost:5175/">Back to Casework</a>
+<h1>Compare recruitment models</h1>
+<nav aria-label="Reference models">
+<div><a href="http://localhost:5176/">Flask posting classifier ↗</a><small>Original project · Random Forest</small></div>
+<div><a href="http://localhost:5177/">Hiring-market dashboard ↗</a><small>Original project · Choose Job Checker</small></div>
+<div><a href="#nishant">Nishant text classifier ↓</a><small>Locally trained · Logistic regression</small></div>
+</nav>
+<section id="nishant"><h2>Nishant text classifier</h2>
+<p>This version uses the project's text prediction code with weights trained locally on the labelled postings. Use the same job description in each app to compare their decisions.</p>
+<form method="post" action="/"><label for="posting">Job posting</label><textarea id="posting" name="posting" rows="7" maxlength="20000" required>{{posting}}</textarea>
+<button type="submit">Check posting</button></form><output aria-live="polite">{{result}}</output><small>A text score describes wording. Verify the vacancy with the employer before acting.</small></section></main></body></html>

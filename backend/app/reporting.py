@@ -24,6 +24,7 @@ def _values(value: object) -> str:
 
 
 def render_markdown_report(document: dict) -> str:
+    prediction = document.get("posting_prediction") or {}
     lines = [
         "# Recruitment Scam Investigation Report",
         "",
@@ -34,7 +35,10 @@ def render_markdown_report(document: dict) -> str:
         "",
         f"- **Case reference:** {_text(document.get('case_ref', 'Unavailable'))}",
         f"- **Title:** {_text(document.get('title', 'Unavailable'))}",
-        f"- **System assessment:** {_text(document.get('assessment', 'Insufficient evidence'))}",
+        f"- **Posting risk (ML):** {_text(prediction.get('label', 'Unscored'))}",
+        f"- **Model:** {_text(prediction.get('model_version', 'Unavailable'))}",
+        "- The model scores posting language and available structured details. Independent verification is needed for authenticity.",
+        f"- **Evidence assessment:** {_text(document.get('assessment', 'Insufficient evidence'))}",
         f"- **Submitted:** {_text(document.get('created_at', 'Unavailable'))}",
         f"- **Report generated:** {_text(document.get('generated_at', 'Unavailable'))}",
         f"- **Consent:** {_values(document.get('consent', {}))}",

@@ -1,0 +1,24 @@
+services:
+  db:
+    restart: unless-stopped
+  neo4j:
+    restart: unless-stopped
+  api:
+    restart: unless-stopped
+    environment:
+      OFFICIAL_JOB_BOARDS: "${OFFICIAL_JOB_BOARDS-Canonical=canonical,Figma=figma}"
+      WEB_ORIGIN: http://localhost:5175
+    ports: !override
+      - "127.0.0.1:8001:8000"
+  worker:
+    restart: unless-stopped
+    environment:
+      OFFICIAL_JOB_BOARDS: "${OFFICIAL_JOB_BOARDS-Canonical=canonical,Figma=figma}"
+      WEB_ORIGIN: http://localhost:5175
+  web:
+    restart: unless-stopped
+    build:
+      args:
+        VITE_API_URL: ""
+    ports: !override
+      - "127.0.0.1:5175:80"

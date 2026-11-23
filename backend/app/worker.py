@@ -14,8 +14,11 @@ from .config import settings
 from .config import validate_database_url, validate_upload_encryption, validate_upload_storage
 from .models import Case, Entity, Evidence, ProcessingJob, AuditEvent, SourceRecord, CorrectionRequest, LoginThrottle, GraphProjectionOutbox, PasswordResetToken
 from .extract import extract
+from .vacancy_verification import check_vacancy
+from .classify_cases import classify
+from .posting_model import load_model
 from .source_adapters import LocalEvidenceCorpusAdapter, RdapDomainAdapter
-from .findings import rebuild_system_findings
+from .findings import RULE_VERSION as FINDING_RULE_VERSION, rebuild_system_findings
 from .graph_outbox import enqueue_graph_sync, process_graph_projection_once
 from .private_storage import decode_upload_encryption_key, is_private_upload_name
 from .upload_storage import delete_upload, ensure_upload_storage, list_uploads, load_upload
@@ -205,8 +208,10 @@ def process_job(db: Session, job: ProcessingJob) -> None:
                         continue
                     db.add(Evidence(case_id=case.id, source_name=observation.source_name, source_type=observation.source_type, source_ref=observation.source_ref, claim=observation.claim, outcome=observation.outcome, excerpt=observation.excerpt, authority=observation.authority, retrieved_at=observation.retrieved_at, details=observation.details))
         db.flush()
+        check_vacancy(db, case)
         rebuild_system_findings(db, case)
-        db.add(AuditEvent(case_id=case.id, actor_id=None, action="system_findings_recomputed", detail={"rule_version": "exact-source-evidence-v1", "trigger": "processing_completed"}))
+        classify(db, case)
+        db.add(AuditEvent(case_id=case.id, actor_id=None, action="system_findings_recomputed", detail={"rule_version": FINDING_RULE_VERSION, "trigger": "processing_completed"}))
         case.status = "completed"
         job.status = "completed"
         job.last_error = ""
@@ -282,6 +287,7 @@ def purge_expired_records(now: datetime | None = None) -> int:
 def run_worker(stop_event: Event | None = None) -> None:
     """Poll the durable PostgreSQL queue until asked to stop, if stoppable."""
     validate_database_url(settings)
+    load_model()
     validate_upload_encryption(settings)
     validate_upload_storage(settings)
     log.info("Case processing worker started")

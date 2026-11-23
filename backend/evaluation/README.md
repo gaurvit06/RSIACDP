@@ -1,5 +1,20 @@
 # Reproducible evaluation
 
+## Testing a labelled job-postings CSV
+
+Run these commands from `backend` in a Python environment with the backend requirements installed. The baseline additionally requires scikit-learn (tested with 1.8.0). Replace the input and result paths with local paths.
+
+```powershell
+python -m evaluation.run_postings_csv worker "C:/data/fake_job_postings.csv" "C:/results/postings" --workers 6
+python -m evaluation.run_postings_csv baseline "C:/data/fake_job_postings.csv" "C:/results/postings"
+```
+
+The worker test uses the case-creation handler and the real processing worker. Each process has an in-memory SQLite database, an empty evidence corpus, external checks disabled and a test user. Each posting runs in its own rolled-back transaction. The input uses labelled posting fields plus the original description, company profile, compensation, education and function. Job IDs, target labels and platform metadata (logo, screening questions and telecommuting flags) are excluded from model inputs. The test measures the automatic first assessment before human review. Cross-case graph linking, UI, queue latency and OCR are outside this CSV benchmark.
+
+The current worker benchmark counts “Higher fraud risk” as the model flag. It also outputs the independent evidence assessment. Prior to the model integration, the historical worker benchmark counted “Evidence supports concern” as its flag. The hash fold applies to Casework’s historical training and baseline. The imported hiring-market model was trained externally; overlap with its training rows is unknown. These data cannot establish independent accuracy for that model. Undefined precision is recorded as JSON null when there are zero flags. The scripts record row-level predictions using job IDs and aggregate metrics alongside a SHA-256 fingerprint of the input.
+
+The comparison model uses TF-IDF unigrams and bigrams plus class-balanced logistic regression. The vocabulary and weights are fitted using training rows only. The held-out fold uses SHA-256 of the whitespace-normalized, case-folded description modulo five (remainder zero). For an empty description it uses the normalized full posting. Exact duplicate descriptions stay together. Related employers, near duplicates and unknown campaigns can still cross the split. Dates and gold evidence, entity and campaign annotations are absent from this file.
+
 ## Synthetic rehearsal requested by the project owner
 
 From `backend`, run `python -m evaluation.generate_synthetic .test-runtime/synthetic-evaluation-v1` to create 108 fictional cases in a new directory. The generator refuses an existing output directory. Each simulated chronological split contains 36 cases; campaign identifiers are disjoint across splits. Only reserved `example.invalid` email identifiers are used. The adjacent manifest records the dataset hash, scope and limitations; the provenance file records generator-defined labels and email spans. No predictions or measured timings are fabricated. This v1 data is retained as the historical text-only baseline fixture.

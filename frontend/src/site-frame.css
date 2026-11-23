@@ -1,0 +1,70 @@
+.site-frame {
+  --frame-gutter: clamp(.55rem, 1.8vw, 1.8rem);
+  --sheet-radius: clamp(16px, 1.7vw, 26px);
+  min-height: 100svh; padding: var(--frame-gutter); background: var(--frame);
+}
+.site-sheet {
+  width: min(100%, 96rem); margin-inline: auto; background: var(--canvas);
+  border-radius: var(--sheet-radius); box-shadow: 0 1rem 3rem #0f282f23;
+}
+.site-masthead {
+  grid-column: 1/-1; display: flex; align-items: center; gap: 1rem; min-width: 0;
+  padding: .8rem clamp(1rem, 2.2vw, 2rem); min-height: 64px;
+  background: var(--rail); border-radius: var(--sheet-radius) var(--sheet-radius) 0 0; border-bottom: 1px solid var(--border);
+}
+.site-home { display: inline-flex; flex: none; color: inherit; text-decoration: none; }
+.site-tools { display: flex; align-items: center; gap: 1.25rem; margin-inline-start: auto; }
+.site-masthead .crumb { min-width: 0; display: flex; align-items: center; gap: .3rem; padding-inline-start: .8rem; border-inline-start: 1px solid var(--border); }
+.site-masthead .crumb a { min-height: 32px; }
+.site-masthead .crumb > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-tools .masthead-action, .site-tools .desk-access {
+  display: inline-flex; justify-content: center; align-items: center; gap: .5rem;
+  padding: .58rem .9rem; border: 1px solid var(--control-border); border-radius: var(--radius-action);
+  background: var(--surface); color: var(--accent); font: 600 .83rem/1.35 var(--font-ui);
+}
+.site-tools .masthead-action:hover, .site-tools .desk-access:hover { background: var(--selected); }
+.shell .content { width: min(100%, 79rem); padding: clamp(1rem, 2.2vw, 2.1rem); }
+.shell .ev-workspace, .shell .case-reading { width: 100%; max-width: none; }
+.shell .route-intro {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  margin: 0 0 1.25rem; padding: clamp(1rem, 2vw, 1.75rem);
+  background: linear-gradient(110deg, var(--selected) 0%, var(--canvas) 90%);
+  border: 1px solid var(--border); border-radius: var(--radius-panel);
+}
+.route-title { display: flex; align-items: flex-start; gap: .95rem; min-width: 0; flex: 1 1 18rem; }
+.route-title > div { min-width: 0; }
+.route-icon, .guide-grid > div > svg { background: var(--surface); color: var(--accent); border: 1px solid var(--border); border-radius: 12px; }
+.route-icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; }
+.guide-grid > div > svg { padding: .55rem; width: 40px; height: 40px; }
+.route-intro .route-title h1 { color: var(--heading); margin: 0; font: 650 clamp(1.55rem, 2.65vw, 2.6rem)/1.13 var(--font-ui); letter-spacing: -.055em; overflow-wrap: anywhere; }
+.route-intro p { margin: .45rem 0 0; max-width: 68ch; font-size: .9rem; line-height: 1.55; }
+.route-intro .reading-meta { margin-bottom: .35rem; }
+.shell .metric-row { background: none; overflow: visible; padding: 0; border: 0; gap: .75rem; margin-bottom: 1.25rem; }
+.shell .metric-row .metric {
+  flex-direction: row-reverse; justify-content: space-between; align-items: center;
+  padding: clamp(.8rem, 1.3vw, 1.25rem); border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface);
+}
+.shell .list-toolbar { align-items: center; }
+@media (max-width: 700px) {
+  .site-frame { --frame-gutter: .4rem; --sheet-radius: 14px; }
+  .site-masthead { flex-wrap: wrap; gap: .4rem .65rem; padding: .6rem .8rem; min-height: 54px; }
+  .workspace-frame .site-masthead .crumb { flex-basis: 100%; order: 2; min-height: 36px; padding: 0 3rem 0 0; border: 0; }
+  .workspace-frame .site-masthead .crumb a { min-height: 28px; padding-inline: 0; }
+  .workspace-frame .site-tools { gap: .45rem; }
+  .workspace-frame .site-tools .system-status { font-size: 10px; max-width: 17ch; line-height: 1.3; }
+  .workspace-frame .site-tools .masthead-action { padding: .5rem; width: 36px; height: 36px; }
+  .masthead-action span { display: none; }
+  .shell .sidebar { position: relative; overflow: visible; padding: 0 .6rem; }
+  .shell .sidebar-header { min-height: 0; margin: 0; }
+  .shell .sidebar-header .workspace-caption { display: none; }
+  .shell .sidebar-header .mobile-toggle { position: absolute; right: .65rem; bottom: calc(100% + 2px); height: 44px; }
+  .shell .content { padding: .85rem .65rem; }
+  .shell .route-intro { margin-bottom: .75rem; padding: .9rem; gap: .65rem; }
+  .route-title { gap: .6rem; }
+  .route-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .route-icon svg { width: 18px; }
+  .shell .metric-row { gap: .5rem; margin-bottom: .8rem; }
+  .shell .metric-row .metric { gap: .3rem; }
+  .shell .list-toolbar { align-items: stretch; }
+  .shell .case-queue { max-width: 100%; }
+}

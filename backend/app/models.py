@@ -57,6 +57,7 @@ class Case(Base):
     submitted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="queued")
     assessment: Mapped[str] = mapped_column(String(64), default="Insufficient evidence")
+    posting_prediction: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     consent_version: Mapped[str] = mapped_column(String(40))
     consented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     external_source_consent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

@@ -1,0 +1,11 @@
+SYNTHETIC TRAINING FIXTURE — example recruitment email
+Subject: Junior Data Analyst offer, vacancy JL-204
+
+Dear Candidate,
+
+Following your interview, we are pleased to offer you the Junior Data Analyst position in Pune for vacancy JL-204.
+Please reply to careers@juniper-loom.invalid to discuss a start date.
+There is no recruitment fee.
+
+Talent Team
+Juniper Loom Training Company (fictional)

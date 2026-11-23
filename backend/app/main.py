@@ -17,6 +17,8 @@ from sqlalchemy import select, or_, and_, delete, update, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from .config import settings, validate_access_token_settings, validate_bootstrap_codes, validate_correction_throttle_settings, validate_database_url, validate_upload_encryption, validate_upload_size, validate_upload_storage, validate_web_origin
+from .vacancy_verification import check_vacancy, configured_boards
+from .posting_model import load_model
 from .db import get_db, SessionLocal
 from .models import User, Case, Entity, Evidence, AuditEvent, CaseLink, ProcessingJob, SourceRecord, CorrectionRequest, HumanDisposition, SystemFinding, LoginThrottle, GraphProjectionOutbox, PasswordResetToken, AccountProvisioningGate
 from .schemas import RegisterRequest, LoginRequest, AccountStatusRequest, PasswordResetIssueRequest, PasswordResetConsumeRequest, CaseCreate, ReviewRequest, EvidenceReviewRequest, DispositionRequest, DispositionReviewRequest, SourceRecordCreate, SourceRecordRetire, CorrectionCreate, CorrectionReview, CorrectionStatusRequest, CorrectionApply
@@ -79,6 +81,8 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("PASSWORD_RESET_TOKEN_MINUTES must be a positive integer")
     if settings.rdap_timeout_seconds <= 0 or settings.rdap_max_response_bytes < 1024:
         raise RuntimeError("RDAP timeout must be positive and RDAP response limit must be at least 1024 bytes")
+    configured_boards()
+    load_model()
     ensure_upload_storage()
     migration_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(migration_config, "head")
@@ -179,10 +183,10 @@ def serialize_evidence(item: Evidence, redact: bool = False):
     details = item.details or {}
     if redact:
         details = {}
-    return {"id": item.id, "source_name": "[source name restricted for privacy]" if redact else item.source_name, "source_type": item.source_type, "source_ref": redact_source_ref(item.source_ref) if redact else item.source_ref, "claim": "[source claim restricted for privacy]" if redact else item.claim, "outcome": item.outcome, "excerpt": "[source excerpt restricted for privacy]" if redact else item.excerpt, "authority": item.authority, "retrieved_at": item.retrieved_at.isoformat(), "details": details, "review_status": item.review_status, "review_reason": "[review rationale restricted for privacy]" if redact and item.review_reason else (redact_text(item.review_reason) if redact else item.review_reason), "reviewed_at": item.reviewed_at.isoformat() if item.reviewed_at else None}
+    return {"id": item.id, "source_name": "[source name restricted for privacy]" if redact else item.source_name, "source_type": item.source_type, "source_ref": redact_source_ref(item.source_ref, item.source_type) if redact else item.source_ref, "claim": "[source claim restricted for privacy]" if redact else item.claim, "outcome": item.outcome, "excerpt": "[source excerpt restricted for privacy]" if redact else item.excerpt, "authority": item.authority, "retrieved_at": item.retrieved_at.isoformat(), "details": details, "review_status": item.review_status, "review_reason": "[review rationale restricted for privacy]" if redact and item.review_reason else (redact_text(item.review_reason) if redact else item.review_reason), "reviewed_at": item.reviewed_at.isoformat() if item.reviewed_at else None}
 
 def serialize_case(case: Case, include_text: bool = False, redact_personal: bool = False):
-    result = {"id": case.id, "case_ref": case.case_ref, "title": "[case title restricted for privacy]" if redact_personal else case.title, "input_kind": case.input_kind, "status": case.status, "assessment": case.assessment, "consent_version": case.consent_version, "external_source_consent": case.external_source_consent, "created_at": case.created_at.isoformat(), "updated_at": case.updated_at.isoformat(), "entities": [serialize_entity(x, redact_personal) for x in case.entities], "evidence": [serialize_evidence(x, redact_personal) for x in case.evidence]}
+    result = {"id": case.id, "case_ref": case.case_ref, "title": "[case title restricted for privacy]" if redact_personal else case.title, "input_kind": case.input_kind, "status": case.status, "posting_prediction": case.posting_prediction, "assessment": case.assessment, "consent_version": case.consent_version, "external_source_consent": case.external_source_consent, "created_at": case.created_at.isoformat(), "updated_at": case.updated_at.isoformat(), "entities": [serialize_entity(x, redact_personal) for x in case.entities], "evidence": [serialize_evidence(x, redact_personal) for x in case.evidence]}
     if include_text:
         result["submitted_text"] = case.submitted_text
     return result
@@ -198,7 +202,7 @@ def serialize_finding(item: SystemFinding, redact: bool = False):
             "evidence_id": evidence.get("evidence_id"),
             "source_name": "[source name restricted for privacy]" if redact else evidence.get("source_name", ""),
             "source_type": evidence.get("source_type", "unknown"),
-            "source_ref": redact_source_ref(evidence.get("source_ref", "")) if redact else evidence.get("source_ref", ""),
+            "source_ref": redact_source_ref(evidence.get("source_ref", ""), evidence.get("source_type", "")) if redact else evidence.get("source_ref", ""),
             "claim": "[source claim restricted for privacy]" if redact else evidence.get("claim", ""),
             "outcome": evidence.get("outcome", "unknown"),
             "authority": evidence.get("authority", "unknown"),
@@ -227,7 +231,9 @@ def health_ready(db: Session = Depends(get_db)):
 
 @app.get("/api/policy")
 def policy():
-    return {"consent_version": current_consent_version(), "retention_days": settings.retention_days, "max_upload_bytes": settings.max_upload_bytes, "allowed_upload_media_types": ["image/png", "image/jpeg", "image/webp", "application/pdf"], "rdap_enabled": settings.rdap_enabled, "rdap_disclosure": "When enabled, only extracted domain names are sent to the domain's public RDAP registry discovered through the IANA bootstrap registry. Submitted text, complete URLs, and other identifiers are not sent. The registry operator and network providers may log domain queries. RDAP provides registration metadata, not a determination of fraud or legitimacy." if settings.rdap_enabled else "External RDAP lookups are disabled. Evidence checks use the configured local corpus only.", "campaign_rule_version": rule_version(settings.campaign_link_threshold), "campaign_link_threshold": settings.campaign_link_threshold, "campaign_signal_weights": SIGNAL_WEIGHTS, "campaign_score_note": "Campaign link strength is a deterministic signal score from 0 to 100, not a probability or finding of wrongdoing. Links below the configured threshold remain low-signal leads.", "stored_data": ["submitted text or uploaded file", "extracted identifiers", "source results", "investigator review and audit records", "correction request contact details and explanation"], "access": "Signed-in workspace users; analyst views withhold free-text evidence, titles, review rationales, and direct identifiers. Authorized investigators and reviewers can inspect case source content. Downloadable reports restrict free-text source content and mask contact identifiers. Correction request details are limited to investigators.", "deletion": "Case records, original uploads, local evidence corpus entries, and correction requests are automatically deleted after the configured retention period."}
+    employers = sorted(configured_boards())
+    board_notice = (f" Automatic vacancy verification covers {', '.join(employers)}. The worker downloads their public job listings and compares the wording locally. It sends no submitted text or identifiers to these boards." if employers else "")
+    return {"official_board_employers": employers, "consent_version": current_consent_version(), "retention_days": settings.retention_days, "max_upload_bytes": settings.max_upload_bytes, "allowed_upload_media_types": ["image/png", "image/jpeg", "image/webp", "application/pdf"], "rdap_enabled": settings.rdap_enabled, "rdap_disclosure": ("When enabled, only extracted domain names are sent to the domain's public RDAP registry discovered through the IANA bootstrap registry. Submitted text, complete URLs, and other identifiers are not sent. The registry operator and network providers may log domain queries. RDAP provides registration metadata, not a determination of fraud or legitimacy." if settings.rdap_enabled else "External RDAP lookups are disabled.") + board_notice, "campaign_rule_version": rule_version(settings.campaign_link_threshold), "campaign_link_threshold": settings.campaign_link_threshold, "campaign_signal_weights": SIGNAL_WEIGHTS, "campaign_score_note": "Campaign link strength is a deterministic signal score from 0 to 100, not a probability or finding of wrongdoing. Links below the configured threshold remain low-signal leads.", "stored_data": ["submitted text or uploaded file", "extracted identifiers", "source results", "investigator review and audit records", "correction request contact details and explanation"], "access": "Signed-in workspace users; analyst views withhold free-text evidence, titles, review rationales, and direct identifiers. Authorized investigators and reviewers can inspect case source content. Downloadable reports restrict free-text source content and mask contact identifiers. Correction request details are limited to investigators.", "deletion": "Case records, original uploads, local evidence corpus entries, and correction requests are automatically deleted after the configured retention period."}
 
 @app.post("/api/corrections", status_code=202)
 def create_correction(body: CorrectionCreate, request: Request, db: Session = Depends(get_db)):
@@ -358,6 +364,8 @@ def apply_correction(request_ref: str, body: CorrectionApply, db: Session = Depe
             if not shared_case_identifiers(db, link.left_case_id, link.right_case_id):
                 link.review_status = "stale"
                 record_audit(db, user.id, "case_link_withdrawn_after_correction", case.id, {"link_id": link.id, "request_ref": request_ref, "rule_version": link.rule_version})
+    if body.entity_id is not None and entity.entity_type in {"company_claim", "job_title_claim"}:
+        check_vacancy(db, case)
     rebuild_system_findings(db, case)
     record_audit(db, user.id, "system_findings_recomputed", case.id, {"rule_version": FINDING_RULE_VERSION, "trigger": "correction_applied"})
     # Recompute campaign links in the same transaction so corrections both
@@ -871,6 +879,8 @@ def review_entity(case_id: int, entity_id: int, body: ReviewRequest, db: Session
                 previous_status = link.review_status
                 link.review_status = "stale"
                 record_audit(db, user.id, "case_link_withdrawn_after_entity_rejection", case_id, {"link_id": link.id, "previous_status": previous_status, "rule_version": link.rule_version})
+    if entity.entity_type in {"company_claim", "job_title_claim"}:
+        check_vacancy(db, entity.case)
     rebuild_system_findings(db, entity.case)
     record_audit(db, user.id, "system_findings_recomputed", case_id, {"rule_version": FINDING_RULE_VERSION, "trigger": "entity_review"})
     enqueue_graph_sync(db, case_id)
@@ -892,6 +902,7 @@ def review_evidence(case_id: int, evidence_id: int, body: EvidenceReviewRequest,
     case = db.get(Case, case_id)
     rebuild_system_findings(db, case)
     record_audit(db, user.id, "system_findings_recomputed", case_id, {"rule_version": FINDING_RULE_VERSION, "trigger": "evidence_review"})
+    enqueue_graph_sync(db, case_id)
     db.commit()
     return serialize_evidence(item, redact=user.role not in {"investigator", "reviewer", "admin"})
 
@@ -985,6 +996,7 @@ def report(case_id: int, db: Session = Depends(get_db), user: User = Depends(cur
     document = {
         "case_ref": case.case_ref,
         "title": "[case title restricted for privacy]",
+        "posting_prediction": case.posting_prediction,
         "assessment": case.assessment,
         "consent": {"version": case.consent_version, "external_rdap_domain_lookup": case.external_source_consent},
         "created_at": case.created_at.isoformat(),

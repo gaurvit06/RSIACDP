@@ -1,0 +1,49 @@
+.sidebar-drawer, .sidebar-drawer-body, .dialog-transition { display: contents; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root { --motion-fast: 120ms; --motion-panel: 190ms; --motion-ease: cubic-bezier(.2,.7,.25,1); }
+
+  .content:not([data-loading-case=true]), .auth-card, .alert, .ev-workspace > .ev-panel, .insight-cases {
+    animation: reveal-surface var(--motion-panel) ease-out;
+  }
+  .modal-backdrop { animation: backdrop-in 150ms ease-out; }
+  .modal { animation: dialog-in var(--motion-panel) var(--motion-ease); }
+  .dialog-transition[data-closing=true] .modal-backdrop {
+    pointer-events: none; animation: backdrop-in 140ms ease-in reverse both;
+  }
+  .dialog-transition[data-closing=true] .modal { animation: dialog-in 140ms ease-in reverse both; }
+  .shell :is(button, a, select, input, textarea, summary, .assessment),
+  .auth-card :is(button, input), tbody tr, .ev-record {
+    transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+  }
+  :is(.primary,.secondary,.icon-button,.sidebar-toggle):active:not(:disabled) { translate: 0 1px; }
+  :is(.primary,.secondary,.icon-button,.sidebar-toggle) { transition-property: background-color, color, border-color, translate; }
+  .insight-track i { transition: width var(--motion-panel) var(--motion-ease); }
+  .finding-chevron, .ev-record summary > svg:last-child { transition: transform var(--motion-panel) var(--motion-ease); }
+
+  @supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+    details::details-content {
+      interpolate-size: allow-keywords; block-size: 0; overflow: clip;
+      transition: block-size var(--motion-panel) var(--motion-ease), content-visibility var(--motion-panel) allow-discrete;
+    }
+    details[open]::details-content { block-size: auto; }
+  }
+
+  @media (width > 700px) {
+    .sidebar { overflow-x: clip; transition: width var(--motion-panel) var(--motion-ease); }
+    .sidebar .nav-item span, .sidebar .workspace-caption, .sidebar .privacy-chip { white-space: nowrap; }
+  }
+  @media (max-width: 700px) {
+    .sidebar-drawer { display: grid; grid-template-rows: 0fr; visibility: hidden;
+      transition: grid-template-rows var(--motion-panel) var(--motion-ease), visibility 0s var(--motion-panel); }
+    .sidebar[data-mobile-open=true] .sidebar-drawer { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
+    .sidebar-drawer-body { display: block; min-height: 0; overflow: hidden; }
+    .sidebar[data-mobile-open=false] nav { display: grid; margin: 10px 0; gap: 3px; }
+    .sidebar[data-mobile-open=false] .sidebar-foot { display: block; }
+    .sidebar[data-mobile-open=false] .sidebar-drawer-body { visibility: hidden; }
+  }
+}
+
+@keyframes reveal-surface { from { opacity: .45; } to { opacity: 1; } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-in { from { opacity: .25; transform: translateY(7px) scale(.99); } to { opacity: 1; transform: none; } }
