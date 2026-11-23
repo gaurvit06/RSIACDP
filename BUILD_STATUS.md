@@ -1,5 +1,9 @@
 # Submission verification
 
+## 23 November 2026 · 21:14 IST · Web image update
+
+The first hosted CI run flagged six fixed advisories against the Nginx 1.30.6 package. The frontend Dockerfile now uses the published 1.30.7 Alpine image. The security gate still fails on fixable high or critical findings. For the check results on the submitted revision, open the [CI history](https://github.com/gaurvit06/RSIACDP/actions/workflows/ci.yml).
+
 ## 23 November 2026 · 21:09 IST
 
 **Scope.** The submitted version runs on localhost. The public sample, private investigation workspace, bundled prediction model, fictional demonstration inputs, evaluation scripts, historical benchmark and automated tests are included. Earlier cloud manifests and the superseded classifier and comparison launcher were removed.
