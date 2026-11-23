@@ -1,6 +1,6 @@
 # Build plan
 
-The submission targets a local, reproducible investigator workspace. Review stages in this order.
+The submission includes a hosted classroom demonstration and a reproducible local investigator workspace. The [hosting guide](HOSTING.md) lists the public endpoint, provider settings and deployment checks. Review the local stages in this order.
 
 1. **Environment.** Initialize private settings in a fresh checkout, build all five services and provision the first investigator. Use the existing installation identity to reopen a saved workspace.
 2. **Case intake.** Exercise text, email, screenshot and PDF inputs. Check consent, queue state, extraction locations and the independent posting-risk decision.

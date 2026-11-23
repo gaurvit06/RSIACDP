@@ -1,5 +1,21 @@
 # Submission verification
 
+## 23 November 2026 · 23:39 IST · Hosted classroom demonstration
+
+The [public website](https://rsiacdp-frontend.vercel.app/) and [backend readiness endpoint](https://casework-api.hostless.app/health/ready) returned HTTP 200. Deployment configuration is in [HOSTING.md](HOSTING.md). Hostless estimated ₹0.00/month for the selected instance at provisioning. Supabase displayed the Free plan. The hosted and local databases are independent.
+
+| Hosted check | Observed result |
+| --- | --- |
+| Access | Signed in as an investigator through the public website. Verified reviewer login through the public API. Anonymous case access returned 401, and registration without a setup code returned 403. Vercel returned private, no-store headers for API responses. |
+| Database and files | Verified migrations created the cases table in `casework_app`, that `public.cases` was absent and that the evidence bucket was private. The restricted runtime login connected over TLS with the intended schema search path. |
+| Worker and posting model | Message `RC-27D26BBB`, email `RC-4D531F26` and scanned PDF `RC-E5564B9E` completed with model decisions and persisted source locations. The PDF yielded the fictional recruitment mailbox on page 1 through OCR. |
+| Campaign and report | Confirmed the shared fictional address, recomputed links, retrieved the campaign and PostgreSQL-derived graph, and downloaded the masked Markdown report for the scanned case. The download omitted the original mailbox. |
+| Evidence review in a browser | Created vacancy case `RC-C353F702` through the hosted walkthrough, reviewed its synthetic employer-register match, and opened its case → evidence → masked mailbox graph. Confirmation applied to the listed vacancy mailbox. |
+| Public sample and local cases | Completed all three public sample steps without signing in. Separately checked the original local case count with a read-only query. All 13 cases remained present. |
+| Release checks | [All six CI jobs passed for application revision f238073](https://github.com/gaurvit06/RSIACDP/actions/runs/45231868388). Live checks used fictional material. Independent model accuracy and a cloud disaster-recovery drill remain unverified. |
+
+To repeat the demonstration, open the hosted site, sign in with the investigator login supplied privately by the owner, and use the [vacancy walkthrough](https://rsiacdp-frontend.vercel.app/#vacancy-demo). Hosted cases are subject to 30-day retention. The committed fixtures can recreate them after expiry.
+
 ## 23 November 2026 · 21:14 IST · Web image update
 
 The first hosted CI run flagged six fixed advisories against the Nginx 1.30.6 package. The frontend Dockerfile now uses the published 1.30.7 Alpine image. The security gate still fails on fixable high or critical findings. For the check results on the submitted revision, open the [CI history](https://github.com/gaurvit06/RSIACDP/actions/workflows/ci.yml).

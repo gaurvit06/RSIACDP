@@ -2,6 +2,8 @@
 
 Casework helps an investigator answer three questions about a job offer. **What does the message say? What can a source verify? Where has the same identifier appeared before?** A student can follow one fictional offer from submission to a source-backed finding, a graph connection and a downloadable report.
 
+**[Open Casework on the web](https://rsiacdp-frontend.vercel.app/).** Choose **Explore a sample case** for the public example. The private investigator workspace requires a login supplied separately by the project owner. The [hosting guide](HOSTING.md) describes the deployment and how to check its health.
+
 ## Run it locally
 
 Install Git, Docker Desktop with Linux containers (Compose 2.24.4 or later), and PowerShell 7.1 or later. Start Docker Desktop. The first build needs internet access to download images and dependencies. No cloud account, LLM key or training dataset is required.
