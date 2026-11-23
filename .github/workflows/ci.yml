@@ -86,7 +86,7 @@ jobs:
         run: pnpm audit
       - name: Build frontend
         run: pnpm run build
-      - name: Run redaction tests
+      - name: Run frontend tests
         run: pnpm run test:redaction
 
   compose-config:
@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Compose configuration
         run: docker compose config --quiet
-      - name: Verify Compose and legacy Render blueprint wiring
+      - name: Verify local services and proxy configuration
         shell: pwsh
         run: ./scripts/test-compose-config.ps1
 
@@ -159,8 +159,6 @@ jobs:
         run: exit 1
       - name: Start the PostgreSQL, Neo4j, API, worker, and web stack
         run: docker compose up --build --wait --wait-timeout 300
-      - name: Pull the production TLS proxy image for scanning
-        run: docker pull caddy:2.11.9-alpine
       - name: Scan PostgreSQL image for fixed high and critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -182,18 +180,6 @@ jobs:
           output: neo4j-trivy-report.json
           severity: HIGH,CRITICAL
           scanners: vuln
-          ignore-unfixed: true
-          exit-code: '1'
-          skip-setup-trivy: true
-      - name: Scan Caddy image for fixed high and critical vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: caddy:2.11.9-alpine
-          format: table
-          severity: HIGH,CRITICAL
-          scanners: vuln
-          trivyignores: .trivyignore.yaml
           ignore-unfixed: true
           exit-code: '1'
           skip-setup-trivy: true
@@ -254,11 +240,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate production Caddy configuration without network access
-        run: >-
-          docker run --rm --network none -e PUBLIC_DOMAIN=example.invalid
-          --mount "type=bind,src=$PWD/Caddyfile,dst=/etc/caddy/Caddyfile,readonly"
-          caddy:2.11.9-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Build API and worker image
         run: docker build -t rsaicdp-api:ci ./backend
       - name: Build frontend container

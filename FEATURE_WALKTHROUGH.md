@@ -1,10 +1,20 @@
-# Local feature walkthrough
+# Presenting Casework
 
-On 22 November the signed-in investigator demonstrated consented message and email intake, screenshot and PDF uploads, extraction confirmation, local corpus matching, evidence relevance, timeline events, campaign-link confirmation, graph filtering, human disposition and both report downloads. The checklist below also includes steps awaiting live verification.
+## On the original demonstration computer
 
-To see the updated payment assessment, refresh the desk and search for **RC-4B9B87AC**. Open **DEMO A | Fictional advance-fee offer**. Its current machine finding cites evidence #33 for the registration fee and identifies the matching character range. The earlier human disposition is a separate record. **RC-52084109** is a useful comparison. A shared email can produce a campaign lead even when the message itself gives insufficient evidence for concern. These updated findings were verified in PostgreSQL; a visual check after the rule upgrade is pending.
+Start Docker Desktop, run `pwsh -File scripts/local.ps1 -Action Start`, then open [Cases](http://localhost:5175/#cases) and sign in. You can present the saved cases directly without entering new data.
 
-Open http://localhost:5175 after running `pwsh -File scripts/local.ps1`. Use synthetic demonstration cases and separate demo accounts. Never change existing real cases to demonstrate a feature. Reviewer and investigator actions require the corresponding role; sign in through the application rather than bypassing permissions.
+1. Search for **DEMO A | Fictional advance-fee offer** (RC-4B9B87AC). Open its findings and locate the submitted wording that requests payment. Point out the difference between the text-model decision and the cited observation.
+2. Open **DEMO B | Fictional follow-up email** (RC-52084109). Compare its evidence with Case A. Open **Campaigns** to inspect the shared identifier, rule version and review state.
+3. Search for **DEMO C**, **DEMO D** or **DEMO E** to demonstrate an attachment. In the case details, inspect the extraction location and evidence timeline. Download the masked report.
+
+These references belong to the original installation. New submissions receive their own case references.
+
+## On a professor’s fresh installation
+
+Follow the [setup and account steps](LOCALHOST.md), then sign in as the investigator. Open the [JL-204 vacancy walkthrough](http://localhost:5175/#vacancy-demo). Read the fictional employer register, consent and choose **Create training case**. After processing, choose **Confirm email and mark source relevant**, then **Show case connections**. The register supports the contact listed for this fictional vacancy. A personal offer, payment instruction or sender identity would require additional evidence.
+
+To demonstrate two cases linked by a repeated identifier, submit the message and email below as separate cases. After both complete, confirm the shared email extraction in each. Choose **Recompute links** in one case, then open **Campaigns** to inspect the link. Open Evidence corpus to inspect the stored register record, or Evidence graph to inspect a masked case-to-identifier connection. You can repeat the demonstration by reopening the records.
 
 ## Suggested synthetic inputs
 
@@ -74,5 +84,3 @@ Unknown identifiers should produce neutral `no_result` checks. Suspicious wordin
 | 25 | Stop and restart with `scripts/local.ps1` | Accounts/cases/uploads persist and all five services become healthy |
 
 Retention/deletion, unsafe URL defenses, encryption, graph outage/fallback and backup/restore are operational features, not all UI buttons. Demonstrate them only in the disposable verification stack, never by expiring or restoring the working database. The existing automated suites exercise these protections; record exact results and exclusions in BUILD_STATUS.md. An optional external source being disabled is a configuration state, not a demonstrated integration. Independent real-world accuracy and the optional LLM/web-search comparison remain outside what synthetic fixtures can prove.
-
-For each live step, record the case reference, role, action, observed result and any fix in the engineering walkthrough. Leave unperformed steps explicitly pending.

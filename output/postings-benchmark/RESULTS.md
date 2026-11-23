@@ -1,5 +1,7 @@
 # Job-posting benchmark · 22 November 2026
 
+This historical run evaluated the evidence rules before Casework adopted the Hiring Market posting classifier. For the current model and evaluation instructions, see the [evaluation guide](../../backend/evaluation/README.md).
+
 The automatic investigation returned **Insufficient evidence for all 17,880 postings**, including all **866** labelled fraudulent. No row failed to process. The system produced no fraud warnings on this dataset. An unflagged posting remains unresolved.
 
 | Evaluation | Cases | Labelled fraudulent | Correct flags | False flags | Missed labelled fraud | Precision | Recall | F1 | False-positive rate |

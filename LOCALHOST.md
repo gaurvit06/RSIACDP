@@ -1,33 +1,34 @@
-# Running on localhost
+# Running Casework on localhost
 
-Hosted deployment is outside the current scope. Use Docker Desktop (Linux containers), Compose 2.24.4 or newer (supports `!override`), and PowerShell 7. The frontend, API, worker, PostgreSQL and Neo4j run locally; no LLM, cloud account or paid provider is required.
+Use Docker Desktop with Linux containers, Docker Compose 2.24.4 or newer and PowerShell 7.1 or newer. Run each command from the repository root. Initial installation downloads container images and packages. After the build, the web app, API, worker, PostgreSQL, Neo4j and OCR all run locally.
 
-## This computer
+## First installation
 
-The previous application's configuration was recovered from its existing containers on 22 November 2026. Accounts, cases and encrypted uploads remain in the same Docker volumes. Configuration is now in `.local/compose.env` and the Compose project identity is in `.local/state.json`. Both are ignored by Git. Keep these private and preserve the upload encryption key; this workspace is under OneDrive, so its filesystem sync/access settings also apply to these files.
+1. Start Docker Desktop and wait for the engine to finish starting.
+2. Run `pwsh -File scripts/local.ps1 -Action Init`. It generates unique database credentials, role setup codes, encryption keys and a Compose project identity. These go in the Git-ignored `.local/` directory. Keep a private recovery copy. The command reuses a complete configuration and stops if it finds a partial or older installation.
+3. Run `pwsh -File scripts/local.ps1 -Action Rebuild`. Wait for the readiness message. The website listens on port 5175 and the API on 8001, both on loopback. The databases stay inside Docker.
+4. Run `pwsh -File scripts/local.ps1 -Action CreateInvestigator`. Choose a sign-in email and a password of 12–128 characters. The command provisions the first account through the registration API and reads the setup code privately.
+5. Open [Casework](http://localhost:5175/) and choose **Sign in**. Use the same hostname throughout the session. Start with the [guided demonstration](FEATURE_WALKTHROUGH.md).
 
-1. Open Docker Desktop and wait for the engine to be running.
-2. Open PowerShell 7 in this repository.
-3. Run `pwsh -File scripts/local.ps1`.
-4. Open <http://localhost:5175/>. Keep using the same hostname when signing in.
+On a clean install the case list starts empty. The guided vacancy walkthrough creates its fictional case and register entry when you give consent. The tracked files in `demo/` let you submit additional cases through the same intake forms used by investigators.
 
-The script verifies container health, database readiness, the website, and the website's API proxy. It reuses built images and does not download updates during normal startup.
+## Existing installation
 
-- Stop without deleting data: `pwsh -File scripts/local.ps1 -Action Stop`
-- Inspect services: `pwsh -File scripts/local.ps1 -Action Status`
-- Rebuild after code changes: `pwsh -File scripts/local.ps1 -Action Rebuild` (requires image/package downloads when not cached).
+| Task | Command |
+| --- | --- |
+| Reopen the workspace with its cases | `pwsh -File scripts/local.ps1 -Action Start` |
+| Check service status | `pwsh -File scripts/local.ps1 -Action Status` |
+| Stop the services and retain cases and files | `pwsh -File scripts/local.ps1 -Action Stop` |
+| Rebuild after a source update | `pwsh -File scripts/local.ps1 -Action Rebuild` |
+| Provision the separate first reviewer, after the investigator exists | `pwsh -File scripts/local.ps1 -Action CreateReviewer` |
 
-Containers restart with Docker unless explicitly stopped. If Docker Desktop is closed or the computer sleeps, the website is unavailable. Ports 5175 and 8001 bind only to this computer. Database and graph ports are internal to the app's Docker network.
+Sign in with your existing account. The API accepts each privileged setup code once. The website has a public sample and a sign-in form. Additional analyst accounts can be provisioned through the registration API. Stopping Docker Desktop or putting the computer to sleep takes the website offline.
 
-## Accounts
+## Configuration and recovery
 
-Open http://localhost:5175/#home for the public Casework dashboard. Visitors can explore the fictional example without an account. Choose **Sign in** for private cases. The Casework logo returns to the public dashboard. The registration form was removed from the website. Existing accounts still work. For account provisioning, the registration API accepts a JSON POST to `/api/auth/register` with `email`, `password` and an optional `setup_code`. For an empty database, create the first account using the `INITIAL_INVESTIGATOR_CODE` value in `.local/compose.env`. Create a separate reviewer account using `INITIAL_REVIEWER_CODE` after the investigator exists. These bootstrap codes cannot be reused to create more accounts with those roles. Subsequent registrations without a code receive the analyst role. Never post the configuration or codes in Git or public messages.
+The launcher reads `.local/state.json` for the original project identity and `.local/compose.env` for its keys. Case records and uploaded files live in the corresponding Docker volumes. Restoring an existing installation requires the original identity, keys and data. Preserve the complete private configuration and volume backups. Deleting volumes, resetting Docker Desktop or replacing the upload key can make evidence unrecoverable.
 
-## Configuration recovery and fresh installations
-
-Do not regenerate keys or change the project identity when recovering existing data. Restore `.local/compose.env` and `.local/state.json` from your private recovery copy. If those copies are lost but the containers still exist, an operator can recover their environment without printing secret values. Deleting Docker volumes or resetting Docker Desktop destroys local data.
-
-For a genuinely new installation, follow the README's `.env.example` instructions, save the configured file as `.local/compose.env`, and create `.local/state.json` containing `{"project":"rsiacdp-local"}`. Set `WEB_ORIGIN=http://localhost:5175`, choose an unused `APP_NETWORK_SUBNET` and matching proxy IPs, and run `-Action Rebuild`. Generate unique secrets; do not copy another installation's secrets. Never run the disposable backup/restore verification script against your working case database.
+[.env.example](.env.example) lists available settings. Local Compose enables configured public employer boards for vacancy checks. For an entirely offline presentation, add `OFFICIAL_JOB_BOARDS=` to the private environment file and rerun Start to apply it. RDAP defaults to disabled. If Docker reports a subnet overlap, select an unused private subnet via `APP_NETWORK_SUBNET` and set `WEB_PROXY_IP` to an available address inside it. A custom `FORWARDED_ALLOW_IPS` must match the web proxy and loopback.
 
 ## Back up or recover this installation on Windows
 

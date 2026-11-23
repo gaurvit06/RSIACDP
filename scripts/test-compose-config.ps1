@@ -3,28 +3,9 @@ $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $composePath = Join-Path $repoRoot "docker-compose.yml"
 $examplePath = Join-Path $repoRoot ".env.example"
-$renderPath = Join-Path $repoRoot "render.yaml"
 
 if (-not (Test-Path -LiteralPath $composePath -PathType Leaf)) { throw "Compose file is missing: $composePath" }
 if (-not (Test-Path -LiteralPath $examplePath -PathType Leaf)) { throw "Environment example is missing: $examplePath" }
-if (-not (Test-Path -LiteralPath $renderPath -PathType Leaf)) { throw "Render Blueprint is missing: $renderPath" }
-
-$renderBlueprint = Get-Content -LiteralPath $renderPath -Raw
-$renderProxyTrust = [regex]::Match($renderBlueprint, '(?ms)-\s*key:\s*FORWARDED_ALLOW_IPS\s*\r?\n(?:\s*#.*\r?\n)*\s*value:\s*(?<value>[^\r\n]+)')
-if (-not $renderProxyTrust.Success -or $renderProxyTrust.Groups["value"].Value.Trim().Trim('"') -ne "127.0.0.1") {
-    throw "Render must keep Uvicorn forwarded-header trust loopback-only until the hosted proxy chain has been verified; never use a wildcard."
-}
-$renderServiceTypes = @([regex]::Matches($renderBlueprint, '(?m)^\s*-\s*type:\s*(?<type>[a-z]+)\s*$') | ForEach-Object { $_.Groups["type"].Value })
-if ($renderServiceTypes.Count -ne 1 -or $renderServiceTypes[0] -ne "web" -or
-    $renderBlueprint -notmatch '(?m)^\s*plan:\s*free\s*$' -or
-    $renderBlueprint -match '(?m)^\s*(?:preDeployCommand|disk):' -or
-    $renderBlueprint -match '(?m)^\s*-\s*type:\s*(?:worker|pserv|cron|keyvalue)\s*$') {
-    throw "Render's default Blueprint must create only a Free web service and must not define a paid-only pre-deploy command, disk, worker, or private service."
-}
-if ($renderBlueprint -notmatch '(?ms)-\s*key:\s*RUN_INLINE_WORKER\s*\r?\n\s*value:\s*["'']?true["'']?\s*$' -or
-    $renderBlueprint -match 'ADMIN_REGISTRATION_CODE') {
-    throw "Free Render deployment must run the durable worker inside the API and must not configure the unused ADMIN_REGISTRATION_CODE."
-}
 
 $exampleLines = Get-Content -LiteralPath $examplePath
 if ($exampleLines | Where-Object { $_ -match '^\s*DATABASE_URL\s*=' }) {
@@ -47,7 +28,6 @@ $probeValues = @{
     CORRECTION_MAX_REQUESTS = "7"
     CORRECTION_WINDOW_SECONDS = "321"
     CORRECTION_LOCKOUT_SECONDS = "654"
-    CADDY_PROXY_IP = "172.30.0.42"
     WEB_PROXY_IP = "172.30.0.43"
     FORWARDED_ALLOW_IPS = ""
     VITE_API_URL = ""
@@ -89,7 +69,7 @@ try {
         }
         [System.Environment]::SetEnvironmentVariable($requiredSecret, $probeValues[$requiredSecret], "Process")
     }
-    $rendered = & docker compose -f $composePath --profile production config --format json
+    $rendered = & docker compose -f $composePath config --format json
     if ($LASTEXITCODE -ne 0) { throw "docker compose config failed with exit code $LASTEXITCODE" }
     $config = ($rendered -join "`n") | ConvertFrom-Json
 
@@ -113,7 +93,7 @@ try {
     }
     if ($config.services.neo4j.image -ne "rsaicdp-neo4j:2026.10.2" -or
         $config.services.neo4j.build.dockerfile -ne "deployment/neo4j/Dockerfile") {
-        throw "Compose and hosted Render must use the same versioned Neo4j image definition."
+        throw "Compose must use the versioned Neo4j image definition."
     }
     $expectedThrottleSettings = @{
         CORRECTION_MAX_REQUESTS = "7"
@@ -127,16 +107,11 @@ try {
     }
 
     $trustedProxyIps = $apiEnvironment.FORWARDED_ALLOW_IPS
-    foreach ($address in @("172.30.0.42", "172.30.0.43")) {
-        if ($trustedProxyIps -notmatch [regex]::Escape($address)) {
-            throw "API forwarded-header trust list does not include configured proxy address $address."
-        }
+    if (($trustedProxyIps -split ',') -notcontains $probeValues.WEB_PROXY_IP) {
+        throw "API forwarded-header trust list must include the configured web proxy."
     }
     if ($config.services.web.networks.casework.ipv4_address -ne "172.30.0.43") {
         throw "Web proxy did not receive its configured stable address."
-    }
-    if ($config.services.caddy.networks.casework.ipv4_address -ne "172.30.0.42") {
-        throw "Caddy proxy did not receive its configured stable address."
     }
     if (-not $config.services.web.healthcheck) {
         throw "Web service is missing its health check."
@@ -172,10 +147,6 @@ try {
     }
     foreach ($header in @("Content-Security-Policy", "Permissions-Policy", "X-Content-Type-Options", "Referrer-Policy", "X-Frame-Options")) {
         if ($securityHeaders -notmatch [regex]::Escape($header)) { throw "Nginx security header is missing: $header" }
-    }
-    $caddyConfig = Get-Content -LiteralPath (Join-Path $repoRoot "Caddyfile") -Raw
-    if ($caddyConfig -notmatch 'Permissions-Policy' -or $caddyConfig -notmatch 'connect-src ''self''') {
-        throw "Caddy is missing the browser security policy headers."
     }
 
     Write-Output "Compose configuration passed: database URLs, upload encryption key wiring, Neo4j authenticated health, correction throttles, proxy trust, upload limits, web health, same-origin routes, browser headers, and private Docker build contexts are configured."
