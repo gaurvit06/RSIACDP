@@ -50,6 +50,17 @@ class AccountProvisioningTests(unittest.TestCase):
         Base.metadata.drop_all(self.engine)
         self.engine.dispose()
 
+    @patch("app.main.settings.allow_analyst_self_registration", False)
+    def test_private_workspace_accepts_operator_codes_and_rejects_public_signup(self):
+        with Session(self.engine) as db:
+            for code, role in [("investigator-test-code", "investigator"), ("reviewer-test-code", "reviewer")]:
+                account = register(RegisterRequest(email=f"{role}@example.com", password="synthetic-password-1", setup_code=code), test_request(), db)
+                self.assertEqual(account["user"]["role"], role)
+            with self.assertRaises(HTTPException) as denied:
+                register(RegisterRequest(email="visitor@example.com", password="synthetic-password-2"), test_request(), db)
+            self.assertEqual(denied.exception.status_code, 403)
+            self.assertIsNone(db.scalar(select(User.id).where(User.email == "visitor@example.com")))
+
     def test_one_time_privileged_roles_are_serialized_and_cannot_be_reused(self):
         with Session(self.engine) as db:
             investigator = register(RegisterRequest(email="first@example.com", password="synthetic-password-1", setup_code="investigator-test-code"), test_request(), db)

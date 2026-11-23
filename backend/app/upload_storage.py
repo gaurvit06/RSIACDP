@@ -27,6 +27,9 @@ class PrivateStorageError(RuntimeError):
 
 
 def _headers() -> dict[str, str]:
+    # Supabase's opaque server keys authenticate at the API gateway.
+    if settings.supabase_service_role_key.startswith("sb_secret_"):
+        return {"apikey": settings.supabase_service_role_key}
     return {
         "apikey": settings.supabase_service_role_key,
         "Authorization": f"Bearer {settings.supabase_service_role_key}",

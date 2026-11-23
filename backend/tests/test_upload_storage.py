@@ -38,6 +38,10 @@ class SupabasePrivateStorageTests(unittest.TestCase):
             side_effect=lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs),
         )
 
+    def test_opaque_server_key_uses_gateway_header(self):
+        settings.supabase_service_role_key = "sb_secret_synthetic-only"
+        self.assertEqual(upload_storage._headers(), {"apikey": "sb_secret_synthetic-only"})
+
     def test_upload_download_and_delete_use_private_authenticated_storage_api(self):
         key = b"k" * 32
         plaintext = b"synthetic private evidence"

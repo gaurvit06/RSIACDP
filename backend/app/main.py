@@ -458,6 +458,8 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
         role = "reviewer"
     elif body.setup_code:
         raise HTTPException(403, "The supplied account setup code is not valid")
+    elif not settings.allow_analyst_self_registration:
+        raise HTTPException(403, "Public registration is closed for this workspace")
     else:
         role = "analyst"
     user = User(email=email, password_hash=hash_password(body.password), role=role)
