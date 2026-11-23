@@ -9,15 +9,15 @@
     "test:redaction": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "lucide-react": "^0.468.0",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "6.3.0",
+    "lucide-react": "0.468.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "vite": "8.3.8"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "typescript": "latest"
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2"
   }
 }
