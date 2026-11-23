@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
+    account_kind: Literal["workspace", "personal"] = "workspace"
     email: EmailStr = Field(max_length=320)
     password: str = Field(min_length=12, max_length=128)
     setup_code: str = Field(default="", max_length=200)

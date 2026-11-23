@@ -90,6 +90,7 @@ function useDialogFocus(open: boolean, onClose: () => void) {
 export default function App() {
   const [token, setToken] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [registerMode, setRegisterMode] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [cases, setCases] = useState<Case[]>([]);
@@ -271,10 +272,10 @@ export default function App() {
   async function login(email: string, password: string) {
     setBusy(true); setError('');
     try {
-      const response = await fetchApi(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password, session_mode: 'cookie' }) });
-      const data = await parseApiResponse<{ csrf_token?: string; user: User }>(response, 'Could not sign in');
+      const response = await fetchApi(`${API}/api/auth/${registerMode ? "register" : "login"}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password, ...(registerMode ? { account_kind: 'personal' } : {}), session_mode: 'cookie' }) });
+      const data = await parseApiResponse<{ csrf_token?: string; user: User }>(response, registerMode ? 'Could not create account' : 'Could not sign in');
       setSignInOpen(false);
-      if (!window.location.hash || window.location.hash === '#home') navigate('Cases');
+      if (registerMode || !window.location.hash || window.location.hash === '#home') navigate('Cases');
       setToken(data.csrf_token || ''); setUser(data.user); await loadCases(data.csrf_token || '');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -335,10 +336,11 @@ export default function App() {
   if (sessionLoading) return <div className="session-loading" role="status">Restoring your secure session…</div>;
   if (!user || !token || !hash || hash === '#home') return <>
     <PublicDashboard signedIn={Boolean(token && user)} notice={signInOpen ? '' : error}
-      onWorkspace={() => { if (token && user) navigate('Cases'); else setSignInOpen(true); }}>
+      onRegister={() => { setRegisterMode(true); setError(''); setSignInOpen(true); }}
+      onWorkspace={() => { if (token && user) navigate('Cases'); else { setRegisterMode(false); setError(''); setSignInOpen(true); } }}>
       <CorrectionAccess/>
     </PublicDashboard>
-    {signInOpen && <SignInDialog onSubmit={login} busy={busy} error={error}
+    {signInOpen && <SignInDialog register={registerMode} onSwitch={() => { setRegisterMode(!registerMode); setError(''); }} onSubmit={login} busy={busy} error={error}
       onClose={() => { setSignInOpen(false); setError(''); }}/>}
   </>;
 
@@ -399,8 +401,8 @@ export default function App() {
 function Metric({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) { return <div className="metric"><div className="metric-icon">{icon}</div><div><span>{label}</span><b>{value}</b></div></div>; }
 function Empty({ onCreate }: { onCreate: () => void }) { return <div className="empty"><div className="empty-icon"><FileSearch size={23}/></div><h3>No cases yet</h3><p>Submit a suspicious recruitment offer to begin an evidence-led investigation.</p><button className="secondary" onClick={onCreate}><Plus size={15}/> Create first case</button></div>; }
 
-function SignInDialog({ onSubmit, busy, error, onClose }: {
-  onSubmit: (email: string, password: string) => void; busy: boolean; error: string; onClose: () => void;
+function SignInDialog({ register, onSwitch, onSubmit, busy, error, onClose }: {
+  register: boolean; onSwitch: () => void; onSubmit: (email: string, password: string) => void; busy: boolean; error: string; onClose: () => void;
 }) {
   const [resetMode, setResetMode] = useState(false);
   const [email, setEmail] = useState('');
@@ -424,7 +426,7 @@ function SignInDialog({ onSubmit, busy, error, onClose }: {
   }
   return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) close(); }}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="desk-sign-in" tabIndex={-1} ref={dialogRef}>
-      <header><h2 id="desk-sign-in">{resetMode ? 'Set a new password' : 'Sign in to Casework'}</h2>
+      <header><h2 id="desk-sign-in">{resetMode ? 'Set a new password' : register ? 'Create your account' : 'Sign in to Casework'}</h2>
         <button className="icon-button" aria-label="Close sign in" onClick={close} disabled={busy || resetBusy}><X size={18}/></button></header>
       {resetMode ? <>
         <p className="modal-intro">Use the one-time reset token supplied through your verified recovery channel.</p>
@@ -434,14 +436,15 @@ function SignInDialog({ onSubmit, busy, error, onClose }: {
           <footer><button type="button" className="secondary" disabled={resetBusy} onClick={() => setResetMode(false)}>Back to sign in</button>
             <button className="primary" disabled={resetBusy}>{resetBusy ? 'Updating…' : 'Update password'}</button></footer></form>
       </> : <>
-        <p className="modal-intro">Access your private investigation workspace.</p>
+        <p className="modal-intro">{register ? 'Submit offers, track your own cases, and download reports.' : 'Access your private investigation workspace.'}</p>
         {error && <p role="alert" className="alert error">{error}</p>}
         {resetNotice && <p role="status" className="alert success">{resetNotice}</p>}
         <form onSubmit={e => { e.preventDefault(); onSubmit(email, password); }}>
           <label>Email address<input type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)}/></label>
-          <label>Password<input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}/></label>
-          <footer><button type="button" className="secondary" disabled={busy} onClick={() => setResetMode(true)}>Use a reset token</button>
-            <button className="primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button></footer></form>
+          <label>{register ? "Password (at least 12 characters)" : "Password"}<input type="password" required minLength={register ? 12 : 1} maxLength={128} autoComplete={register ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)}/></label>
+          <button type="button" className="secondary" disabled={busy} onClick={() => { onSwitch(); setPassword(''); setResetNotice(''); }}>{register ? "Already registered? Sign in" : "New here? Create an account"}</button>
+          <footer>{!register && <button type="button" className="secondary" disabled={busy} onClick={() => setResetMode(true)}>Use a reset token</button>}
+            <button className="primary" disabled={busy}>{register ? (busy ? 'Creating account…' : 'Create account') : (busy ? 'Signing in…' : 'Sign in')}</button></footer></form>
       </>}
     </section>
   </div>;
@@ -503,7 +506,7 @@ function NewCase({ onClose, onSubmit, onUpload, busy, retentionDays, maxUploadBy
         </>}
         {file && <div className="file-chip"><FileText size={16}/>{file.name} · {formatBytes(file.size)}<button type="button" aria-label="Remove selected file" onClick={() => selectFile()}><X size={14}/></button></div>}
         {exceedsLimit && <p role="alert">Shorten the posting to 100,000 characters including field labels.</p>}
-        <label className="consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/><span>I consent to use this material for investigation. The submission, extracted identifiers, evidence and review history are stored for the case. Signed-in workspace users can access it; contact identifiers are masked for analysts and downloads. Case records and original uploads are deleted after {retentionDays} days.</span></label>
+        <label className="consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/><span>I consent to use this material for investigation. The submission, extracted identifiers, evidence and review history are stored for the case. Personal accounts see their own submissions. Authorized workspace staff can access cases; contact identifiers are masked for analysts and downloads. Case records and original uploads are deleted after {retentionDays} days.</span></label>
         <p className="modal-intro">{rdapDisclosure}</p>
         {rdapEnabled && <><label className="consent"><input type="checkbox" checked={rdapConsent} onChange={e => setRdapConsent(e.target.checked)}/><span>I separately consent to sending extracted domain names to the corresponding public RDAP registry for registration metadata checks. This does not send the submitted text, complete URLs, email addresses, or other identifiers.</span></label></>}
         <div className="modal-warning"><AlertTriangle size={15}/> A match or repeated identifier is an investigative lead, not proof of wrongdoing.</div>

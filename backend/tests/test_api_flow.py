@@ -118,6 +118,30 @@ class CaseFlowTests(unittest.TestCase):
             self.assertEqual(report.status_code, 200)
             self.assertIn("https://job-boards.greenhouse.io/example/jobs/144", report.text)
 
+    def test_personal_accounts_can_only_open_their_own_cases(self):
+        def signup(email):
+            result = self.client.post("/api/auth/register", json={
+                "email": email, "password": "fictional long passphrase", "account_kind": "personal",
+            })
+            self.assertEqual(result.status_code, 200, result.text)
+            self.assertEqual(result.json()["user"]["role"], "personal")
+            return {"Authorization": f"Bearer {result.json()['access_token']}"}
+
+        owner = signup("synthetic-owner@example.com")
+        other = signup("synthetic-other@example.com")
+        case = self.client.post("/api/cases", headers=owner, json={
+            "title": "My fictional offer", "input_kind": "text", "submitted_text": "Fictional posting",
+            "consent_version": "consent-v2", "consent": True,
+        }).json()
+        path = f"/api/cases/{case['id']}"
+        self.assertEqual(self.client.get(path, headers=owner).json()["title"], "My fictional offer")
+        self.assertEqual(self.client.get(path + "/report", headers=owner).status_code, 200)
+        self.assertEqual(self.client.get(path, headers=other).status_code, 404)
+        self.assertEqual(self.client.get(path + "/report", headers=other).status_code, 404)
+        self.assertEqual(self.client.get("/api/cases", headers=other).json(), [])
+        self.assertEqual(self.client.get("/api/processing-status", headers=other).json()["items"], [])
+        self.assertEqual(self.client.get("/api/campaigns", headers=other).status_code, 403)
+
     def test_z_cookie_session_is_http_only_csrf_protected_and_revoked(self):
         # The registration-limit test intentionally leaves its shared test-client
         # address throttled. Start this independent auth-flow test with a clean bucket.
@@ -125,7 +149,7 @@ class CaseFlowTests(unittest.TestCase):
             db.execute(delete(LoginThrottle))
             db.commit()
         credentials = {"email": "cookie-session@example.net", "password": "cookie session passphrase long", "session_mode": "cookie"}
-        registered = self.client.post("/api/auth/register", json=credentials)
+        registered = self.client.post("/api/auth/register", json={**credentials, "account_kind": "personal"})
         self.assertEqual(registered.status_code, 200, registered.text)
         self.assertNotIn("access_token", registered.json())
         self.assertEqual(registered.json()["token_type"], "cookie")
@@ -379,7 +403,8 @@ class CaseFlowTests(unittest.TestCase):
         self.assertEqual(strong_group["links"][0]["matched_entities"][0]["case_id"], case_id)
         self.assertTrue(any("weight 40" in reason for reason in strong_group["links"][0]["reasons"]))
 
-        analyst = self.client.post("/api/auth/register", json={"email": "analyst@example.net", "password": "another correct horse staple"})
+        with patch.object(settings, "allow_analyst_self_registration", True):
+            analyst = self.client.post("/api/auth/register", json={"email": "analyst@example.net", "password": "another correct horse staple"})
         self.assertEqual(analyst.status_code, 200, analyst.text)
         self.assertEqual(analyst.json()["user"]["role"], "analyst")
         analyst_headers = {"Authorization": f"Bearer {analyst.json()['access_token']}"}
@@ -717,11 +742,8 @@ class CaseFlowTests(unittest.TestCase):
             with SessionLocal() as db:
                 db.execute(delete(LoginThrottle))
                 db.commit()
-            with SessionLocal() as db:
-                is_first_account = db.scalar(select(User.id).limit(1)) is None
-            bootstrap = {"setup_code": TEST_INVESTIGATOR_CODE} if is_first_account else {}
-            first = self.client.post("/api/auth/register", json={"email": "registration-one@example.net", "password": "a sufficiently long passphrase", **bootstrap})
-            second = self.client.post("/api/auth/register", json={"email": "registration-two@example.net", "password": "a sufficiently long passphrase"})
+            first = self.client.post("/api/auth/register", json={"account_kind": "personal", "email": "registration-one@example.net", "password": "a sufficiently long passphrase"})
+            second = self.client.post("/api/auth/register", json={"account_kind": "personal", "email": "registration-two@example.net", "password": "a sufficiently long passphrase"})
             limited = self.client.post("/api/auth/register", json={"email": "registration-three@example.net", "password": "a sufficiently long passphrase"})
             self.assertEqual(first.status_code, 200, first.text)
             self.assertEqual(second.status_code, 200, second.text)

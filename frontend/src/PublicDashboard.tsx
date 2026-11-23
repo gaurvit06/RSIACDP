@@ -21,8 +21,8 @@ function StageContent({ index }: { index: number }) {
   </div></div>;
 }
 
-export function PublicDashboard({ signedIn, onWorkspace, children, notice }: {
-  signedIn: boolean; onWorkspace: () => void; children: ReactNode; notice: string;
+export function PublicDashboard({ signedIn, onWorkspace, onRegister, children, notice }: {
+  signedIn: boolean; onWorkspace: () => void; onRegister: () => void; children: ReactNode; notice: string;
 }) {
   const [active, setActive] = useState(0);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -39,6 +39,7 @@ export function PublicDashboard({ signedIn, onWorkspace, children, notice }: {
   }
   return <SiteFrame tools={<nav className="public-nav" aria-label="Introduction"><button onClick={() => jump(guide.current)}>How it works</button>
           <button className="desk-access" onClick={onWorkspace}>{signedIn ? 'Open workspace' : 'Sign in'} <ArrowUpRight size={16}/></button>
+          {!signedIn && <button className="desk-access" onClick={onRegister}>Create account</button>}
         </nav>}>
     <main className="public-main">
       {notice && <p role="status" className="desk-notice">{notice}</p>}

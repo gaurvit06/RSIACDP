@@ -447,21 +447,26 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "An account with this email already exists")
     # Investigator privileges require an operator-provisioned one-time setup secret.
-    is_first = db.scalar(select(User.id).limit(1)) is None
-    if is_first and (not settings.initial_investigator_code or not secrets.compare_digest(body.setup_code, settings.initial_investigator_code)):
-        raise HTTPException(403, "Initial investigator setup code is required")
-    if is_first:
-        role = "investigator"
-    elif settings.initial_reviewer_code and secrets.compare_digest(body.setup_code, settings.initial_reviewer_code):
-        if db.scalar(select(User.id).where(User.role == "reviewer").limit(1)):
-            raise HTTPException(409, "An authorized reviewer account has already been provisioned")
-        role = "reviewer"
-    elif body.setup_code:
-        raise HTTPException(403, "The supplied account setup code is not valid")
-    elif not settings.allow_analyst_self_registration:
-        raise HTTPException(403, "Public registration is closed for this workspace")
+    if body.account_kind == "personal":
+        if body.setup_code:
+            raise HTTPException(400, "Personal accounts do not use a workspace setup code")
+        role = "personal"
     else:
-        role = "analyst"
+        is_first = db.scalar(select(User.id).where(User.role != "personal").limit(1)) is None
+        if is_first and (not settings.initial_investigator_code or not secrets.compare_digest(body.setup_code, settings.initial_investigator_code)):
+            raise HTTPException(403, "Initial investigator setup code is required")
+        if is_first:
+            role = "investigator"
+        elif settings.initial_reviewer_code and secrets.compare_digest(body.setup_code, settings.initial_reviewer_code):
+            if db.scalar(select(User.id).where(User.role == "reviewer").limit(1)):
+                raise HTTPException(409, "An authorized reviewer account has already been provisioned")
+            role = "reviewer"
+        elif body.setup_code:
+            raise HTTPException(403, "The supplied account setup code is not valid")
+        elif not settings.allow_analyst_self_registration:
+            raise HTTPException(403, "Public registration is closed for this workspace")
+        else:
+            role = "analyst"
     user = User(email=email, password_hash=hash_password(body.password), role=role)
     db.add(user)
     db.commit()
@@ -767,11 +772,16 @@ async def upload_case(title: str = Form(min_length=3, max_length=240), consent_v
 
 @app.get("/api/cases")
 def list_cases(db: Session = Depends(get_db), user: User = Depends(current_user)):
-    cases = db.scalars(select(Case).order_by(Case.created_at.desc()).limit(200)).all()
+    query = select(Case)
+    if user.role == "personal":
+        query = query.where(Case.created_by == user.id)
+    cases = db.scalars(query.order_by(Case.created_at.desc()).limit(200)).all()
     result = []
     for case in cases:
         data = serialize_case(case, redact_personal=user.role not in {"investigator", "reviewer", "admin"})
-        data["links"] = [serialize_link(link, redact=user.role not in {"investigator", "reviewer", "admin"}) for link in db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()]
+        if user.role == "personal":
+            data["title"] = case.title
+        data["links"] = [] if user.role == "personal" else [serialize_link(link, redact=user.role not in {"investigator", "reviewer", "admin"}) for link in db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()]
         result.append(data)
     record_audit(db, user.id, "case_list_accessed", None, {"case_count": len(cases)})
     db.commit()
@@ -789,6 +799,7 @@ def processing_status(db: Session = Depends(get_db), user: User = Depends(curren
             ProcessingJob.last_error.label("last_error"),
         )
         .join(Case, Case.id == ProcessingJob.case_id)
+        .where(Case.created_by == user.id if user.role == "personal" else True)
         .order_by(Case.created_at.desc())
         .limit(200)
     ).mappings().all()
@@ -810,14 +821,16 @@ def processing_status(db: Session = Depends(get_db), user: User = Depends(curren
 @app.get("/api/cases/{case_id}")
 def get_case(case_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
     case = db.get(Case, case_id)
-    if not case:
+    if not case or (user.role == "personal" and case.created_by != user.id):
         raise HTTPException(404, "Case not found")
     record_audit(db, user.id, "case_accessed", case.id)
     db.commit()
     db.refresh(case)
     result = serialize_case(case, include_text=user.role in {"investigator", "reviewer", "admin"}, redact_personal=user.role not in {"investigator", "reviewer", "admin"})
-    result["timeline"] = [{"action": a.action, "actor_id": a.actor_id, "detail": redact_data(a.detail) if user.role not in {"investigator", "reviewer", "admin"} else a.detail, "created_at": a.created_at.isoformat()} for a in db.scalars(select(AuditEvent).where(AuditEvent.case_id == case.id).order_by(AuditEvent.created_at)).all()]
-    result["links"] = [serialize_link(link, redact=user.role not in {"investigator", "reviewer", "admin"}) for link in db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()]
+    if user.role == "personal":
+        result.update(title=case.title, submitted_text=case.submitted_text)
+    result["timeline"] = [{"action": a.action, "actor_id": None if user.role == "personal" else a.actor_id, "detail": {} if user.role == "personal" else redact_data(a.detail) if user.role not in {"investigator", "reviewer", "admin"} else a.detail, "created_at": a.created_at.isoformat()} for a in db.scalars(select(AuditEvent).where(AuditEvent.case_id == case.id).order_by(AuditEvent.created_at)).all()]
+    result["links"] = [] if user.role == "personal" else [serialize_link(link, redact=user.role not in {"investigator", "reviewer", "admin"}) for link in db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()]
     result["human_dispositions"] = [serialize_disposition(item, redact=user.role not in {"investigator", "reviewer", "admin"}) for item in db.scalars(select(HumanDisposition).where(HumanDisposition.case_id == case.id).order_by(HumanDisposition.created_at)).all()]
     redact = user.role not in {"investigator", "reviewer", "admin"}
     result["findings"] = [serialize_finding(item, redact=redact) for item in db.scalars(select(SystemFinding).where(SystemFinding.case_id == case.id, SystemFinding.active.is_(True)).order_by(SystemFinding.created_at, SystemFinding.id)).all()]
@@ -982,7 +995,7 @@ def report(case_id: int, db: Session = Depends(get_db), user: User = Depends(cur
     if format not in {"json", "markdown"}:
         raise HTTPException(400, "Report format must be json or markdown")
     case = db.get(Case, case_id)
-    if not case:
+    if not case or (user.role == "personal" and case.created_by != user.id):
         raise HTTPException(404, "Case not found")
     # Default export masks contact identifiers, including the original submission text.
     entities = []
@@ -994,7 +1007,7 @@ def report(case_id: int, db: Session = Depends(get_db), user: User = Depends(cur
     audits = db.scalars(select(AuditEvent).where(AuditEvent.case_id == case.id).order_by(AuditEvent.created_at)).all()
     findings = db.scalars(select(SystemFinding).where(SystemFinding.case_id == case.id, SystemFinding.active.is_(True)).order_by(SystemFinding.created_at, SystemFinding.id)).all()
     finding_history = db.scalars(select(SystemFinding).where(SystemFinding.case_id == case.id).order_by(SystemFinding.created_at, SystemFinding.id)).all()
-    links = db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()
+    links = [] if user.role == "personal" else db.scalars(select(CaseLink).where(or_(CaseLink.left_case_id == case.id, CaseLink.right_case_id == case.id))).all()
     document = {
         "case_ref": case.case_ref,
         "title": "[case title restricted for privacy]",
@@ -1012,7 +1025,7 @@ def report(case_id: int, db: Session = Depends(get_db), user: User = Depends(cur
         "campaign_links": [serialize_link(item, redact=True) for item in links],
         "campaign_link_note": "Campaign connections are investigative leads. Reused identifiers do not establish that a person or organization acted improperly.",
         "human_dispositions": [serialize_disposition(item, redact=True) for item in human_dispositions],
-        "timeline": [{"action": event.action, "actor_type": "workspace_user" if event.actor_id is not None else "system", "occurred_at": event.created_at.isoformat(), "details": redact_data(event.detail)} for event in audits],
+        "timeline": [{"action": event.action, "actor_type": "workspace_user" if event.actor_id is not None else "system", "occurred_at": event.created_at.isoformat(), "details": {} if user.role == "personal" else redact_data(event.detail)} for event in audits],
         "rule_versions": sorted({link.rule_version for link in links}),
     }
     record_audit(db, user.id, "report_exported", case.id, {"format": format, "redacted": True})
@@ -1099,6 +1112,8 @@ def review_link(case_id: int, link_id: int, body: ReviewRequest, db: Session = D
 
 @app.get("/api/campaigns")
 def list_campaigns(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    if user.role == "personal":
+        raise HTTPException(403, "Workspace access is required for campaign analysis")
     redact = user.role not in {"investigator", "reviewer", "admin"}
     active_links = db.scalars(select(CaseLink).where(CaseLink.review_status.in_({"proposed", "confirmed", "low_signal"})).order_by(CaseLink.created_at.desc()).limit(2000)).all()
     adjacency: dict[int, set[int]] = {}

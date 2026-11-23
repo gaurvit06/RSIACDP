@@ -1,5 +1,9 @@
 # Submission verification
 
+## 24 November 2026 · Personal account registration
+
+The landing page now offers **Create account**. A personal account can submit offers, track processing, reopen its own cases, and download reports. Investigator and reviewer provisioning remain separate. The API checks case ownership for personal accounts and restricts workspace-wide campaign and evidence tools. Existing accounts, cases, and database schemas require no migration. The API integration suite passed 18 tests, including a two-account isolation check for list, detail, report, processing and campaign access.
+
 ## 23 November 2026 · 23:39 IST · Hosted classroom demonstration
 
 The [public website](https://rsiacdp-frontend.vercel.app/) and [backend readiness endpoint](https://casework-api.hostless.app/health/ready) returned HTTP 200. Deployment configuration is in [HOSTING.md](HOSTING.md). Hostless estimated ₹0.00/month for the selected instance at provisioning. Supabase displayed the Free plan. The hosted and local databases are independent.

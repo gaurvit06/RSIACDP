@@ -1,6 +1,6 @@
 # Running the hosted demonstration
 
-Open [Casework](https://rsiacdp-frontend.vercel.app/) to try the public fictional offer. Choose **Sign in** to use the private workspace. The project owner supplies an investigator login separately. Once signed in, the [vacancy walkthrough](https://rsiacdp-frontend.vercel.app/#vacancy-demo) takes you from a fictional job offer to its source and graph. The original presentation computer has its own database and case history.
+Open [Casework](https://rsiacdp-frontend.vercel.app/) to try the public fictional offer. Choose **Create account** to get a personal case workspace, or **Sign in** to return to an existing one. Personal accounts can submit offers and read and export their own results. The project owner supplies an investigator login separately. Once signed in, the [vacancy walkthrough](https://rsiacdp-frontend.vercel.app/#vacancy-demo) takes you from a fictional job offer to its source and graph. The original presentation computer has its own database and case history.
 
 ## Deployment configuration
 

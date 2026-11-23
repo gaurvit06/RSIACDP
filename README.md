@@ -2,7 +2,7 @@
 
 Casework helps an investigator answer three questions about a job offer. **What does the message say? What can a source verify? Where has the same identifier appeared before?** A student can follow one fictional offer from submission to a source-backed finding, a graph connection and a downloadable report.
 
-**[Open Casework on the web](https://rsiacdp-frontend.vercel.app/).** Choose **Explore a sample case** for the public example. The private investigator workspace requires a login supplied separately by the project owner. The [hosting guide](HOSTING.md) describes the deployment and how to check its health.
+**[Open Casework on the web](https://rsiacdp-frontend.vercel.app/).** Choose **Explore a sample case** for the public example. Choose **Create account** to submit and track your own offers. For the shared classroom cases and investigator tools, use the investigator login supplied by the project owner. The [hosting guide](HOSTING.md) describes the deployment and how to check its health.
 
 ## Run it locally
 

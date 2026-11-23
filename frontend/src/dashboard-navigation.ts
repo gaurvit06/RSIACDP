@@ -21,6 +21,7 @@ export function dashboardRoute(hash: string, role?: string) {
 }
 
 export function dashboardAvailable(section: Dashboard, role?: string) {
+  if (role === "personal") return section === "Cases";
   if (['Accounts', 'Disposition reviews'].includes(section)) return role === 'reviewer' || role === 'admin';
   if (['Posting insights', 'Evidence graph', 'Evidence corpus', 'Corrections'].includes(section))
     return ['investigator', 'reviewer', 'admin'].includes(role ?? '');
