@@ -8,7 +8,7 @@ Casework helps an investigator answer three questions about a job offer. **What 
 
 Install Git, Docker Desktop with Linux containers (Compose 2.24.4 or later), and PowerShell 7.1 or later. Start Docker Desktop. The first build needs internet access to download images and dependencies. No cloud account, LLM key or training dataset is required.
 
-**Evaluation materials:** [editable presentation](evaluation-materials/Casework.pptx) · [two-minute script, ten-minute route and viva questions](evaluation-materials/VIVA.md). The reproducible application revision is [fcb6b6c](https://github.com/gaurvit06/RSIACDP/commit/fcb6b6c1e467a960cf5ff18dadbcfaf3e8d736fa). The branch also contains the subsequent documentation and slides.
+The reproducible application revision is [fcb6b6c](https://github.com/gaurvit06/RSIACDP/commit/fcb6b6c1e467a960cf5ff18dadbcfaf3e8d736fa).
 
 On a **new computer**, open PowerShell and run:
 
